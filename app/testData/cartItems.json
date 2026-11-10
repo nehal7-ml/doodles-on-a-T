@@ -1,0 +1,23 @@
+[
+  {
+    "id": "1",
+    "name": "Doodle 1",
+    "price": 10,
+    "quantity": 1,
+    "image": "https://picsum.photos/id/10/200/300"
+  },
+  {
+    "id": "2",
+    "name": "Doodle 2",
+    "price": 20,
+    "quantity": 2,
+    "image": "https://picsum.photos/id/20/200/300"
+  },
+  {
+    "id": "3",
+    "name": "Doodle 3",
+    "price": 30,
+    "quantity": 3,
+    "image": "https://picsum.photos/id/30/200/300"
+  }
+]

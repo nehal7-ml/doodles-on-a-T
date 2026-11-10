@@ -1,0 +1,71 @@
+[
+  {
+    "id": 1,
+    "images": [
+      "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=600&q=80",
+      "https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?auto=format&fit=crop&w=600&q=80"
+    ],
+    "name": "Classic Cotton T-Shirt",
+    "price": 19.99,
+    "description": "A premium lightweight cotton t-shirt featuring a tailored fit and breathable fabric ideal for everyday wear.",
+    "variants": [
+      {
+        "id": 1,
+        "name": "Black",
+        "colors": ["#000000"]
+      },
+      {
+        "id": 2,
+        "name": "White",
+        "colors": ["#ffffff"]
+      }
+    ],
+    "sizes": ["XS", "S", "M", "L", "XL", "XXL"]
+  },
+  {
+    "id": 2,
+    "images": [
+      "https://images.unsplash.com/photo-1556905055-8f358a7a47b2?auto=format&fit=crop&w=600&q=80",
+      "https://images.unsplash.com/photo-1562157873-818bc0726f68?auto=format&fit=crop&w=600&q=80"
+    ],
+    "name": "Heavyweight Hoodie",
+    "price": 49.99,
+    "description": "Cozy fleece-lined hoodie with a kangaroo pocket, adjustable drawstrings, and ribbed cuffs designed for maximum comfort.",
+    "variants": [
+      {
+        "id": 3,
+        "name": "Charcoal",
+        "colors": ["#333333"]
+      },
+      {
+        "id": 4,
+        "name": "Navy Blue",
+        "colors": ["#1e3a8a"]
+      }
+    ],
+    "sizes": ["S", "M", "L", "XL", "XXL"]
+  },
+  {
+    "id": 3,
+    "images": [
+      "https://images.unsplash.com/photo-1542272604-787c3835535d?auto=format&fit=crop&w=600&q=80",
+      "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?auto=format&fit=crop&w=600&q=80"
+    ],
+    "name": "Slim Fit Denim Jeans",
+    "price": 59.99,
+    "description": "Durable stretch denim engineered with a modern slim-cut profile and classic five-pocket architecture.",
+    "variants": [
+      {
+        "id": 5,
+        "name": "Classic Indigo",
+        "colors": ["#1d4ed8"]
+      },
+      {
+        "id": 6,
+        "name": "Stay Black",
+        "colors": ["#111827"]
+      }
+    ],
+    "sizes": ["28", "30", "32", "34", "36"]
+  }
+]

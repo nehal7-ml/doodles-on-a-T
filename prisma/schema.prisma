@@ -1,0 +1,351 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../server/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+/// Account holder. Auth.js owns the identity columns (`email`, `emailVerified`,
+/// `image`); `passwordHash` is set only for email/password users. Roles are
+/// application-enforced strings: customer | staff | admin.
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  passwordHash  String? // Argon2id PHC string; null for OAuth-only users
+  role          String    @default("customer") // customer | staff | admin
+  isActive      Boolean   @default(true)
+  lastLoginAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts       Account[]
+  sessions       Session[]
+  passwordResets PasswordResetToken[]
+  carts          Cart[]
+  orders         Order[]
+  payments       Payment[]
+  auditLogs      AuditLog[]
+
+  @@index([role])
+}
+
+/// OAuth provider link (Google). Field names are fixed by @auth/prisma-adapter.
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+/// Opaque database session. `sessionToken` is the cookie value; never expose it.
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  userAgent    String? // nullable extras: the adapter ignores them
+  ipAddress    String?
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expires])
+}
+
+/// Used by Auth.js email/verification flows. Field names are adapter-fixed.
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+/// One-way hashed password reset token (SHA-256 of the emailed value).
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expires   DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// Server-side cart. Signed-in customers have one active cart per account;
+/// guests are identified by the httpOnly `cart_token` cookie and have no
+/// `userId` until they sign in (at which point the guest cart is merged).
+model Cart {
+  id        String     @id @default(cuid())
+  userId    String?
+  token     String?    @unique // random cookie value for guests; null once merged
+  status    String     @default("active") // active | converted | abandoned
+  currency  String     @default("USD")
+  expiresAt DateTime?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  user      User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     CartItem[]
+
+  @@index([userId, status])
+  @@index([token])
+}
+
+model CartItem {
+  id             String         @id @default(cuid())
+  cartId         String
+  variantId      String
+  quantity       Int            @default(1) // 1..99
+  unitPriceCents Int // display cache; re-priced from the variant on read
+  currency       String         @default("USD")
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  cart           Cart           @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  variant        ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@unique([cartId, variantId])
+  @@index([variantId])
+}
+
+/// A product that is shown in the store.
+/// Products that come from Printful keep their Printful sync product id so
+/// webhook events can be matched back to the local row.
+model Product {
+  id                String           @id @default(cuid())
+  printfulProductId Int?             @unique
+  externalId        String?          @unique
+  name              String
+  description       String           @default("")
+  price             Float            @default(0)
+  currency          String           @default("USD")
+  images            String           @default("[]")
+  sizes             String           @default("[]")
+  thumbnailUrl      String?
+  isActive          Boolean          @default(true)
+  raw               String?
+  variants          ProductVariant[]
+  orderItems        OrderItem[]
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([isActive])
+}
+
+/// One purchasable size/colour combination.
+/// For Printful products `printfulVariantId` is the Sync Variant id that is
+/// sent when an order is created and `catalogVariantId` is the blank catalog
+/// variant id that is used for shipping rate estimates.
+model ProductVariant {
+  id                String      @id @default(cuid())
+  printfulVariantId Int?        @unique
+  catalogVariantId  Int?
+  externalId        String?     @unique
+  name              String
+  size              String?
+  color             String?
+  colors            String      @default("[]")
+  price             Float?
+  currency          String?
+  image             String?
+  sku               String?
+  inStock           Boolean     @default(true)
+  isActive          Boolean     @default(true)
+  productId         String
+  product           Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  orderItems        OrderItem[]
+  cartItems         CartItem[]
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @default(now()) @updatedAt
+
+  @@index([productId])
+  @@index([catalogVariantId])
+}
+
+model Order {
+  id              String       @id @default(cuid())
+  orderNumber     String       @unique
+  externalId      String       @unique
+  userId          String?
+  user            User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  status          String       @default("pending")
+  paymentStatus   String       @default("unpaid")
+  refundedCents   Int          @default(0)
+  printfulOrderId Int?         @unique
+  email           String?
+  customerName    String?
+  shippingMethod  String?
+  shippingService String?
+  shippingCost    Float        @default(0)
+  subtotal        Float        @default(0)
+  discount        Float        @default(0)
+  tax             Float        @default(0)
+  total           Float        @default(0)
+  currency        String       @default("USD")
+  recipient       String       @default("{}")
+  trackingNumber  String?
+  trackingUrl     String?
+  carrier         String?
+  shippedAt       DateTime?
+  deliveredAt     DateTime?
+  canceledAt      DateTime?
+  failureReason   String?
+  raw             String?
+  items           OrderItem[]
+  events          OrderEvent[]
+  payments        Payment[]
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([paymentStatus])
+  @@index([email])
+}
+
+model OrderItem {
+  id                String          @id @default(cuid())
+  orderId           String
+  order             Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId         String?
+  product           Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
+  variantId         String?
+  variant           ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  printfulItemId    Int?
+  printfulVariantId Int?
+  name              String
+  size              String?
+  color             String?
+  quantity          Int
+  price             Float
+  currency          String          @default("USD")
+
+  @@index([orderId])
+}
+
+model OrderEvent {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  type      String
+  message   String
+  payload   String?
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+}
+
+/// One payment attempt for an order. Provider SDK types never leave
+/// `server/payments/`; this row stores normalized status plus provider ids.
+model Payment {
+  id                  String   @id @default(cuid())
+  orderId             String
+  userId              String?
+  provider            String   @default("stripe") // stripe | polar | paypal | manual
+  providerPaymentId   String?  @unique // PaymentIntent id / Polar order id
+  providerCheckoutId  String?  @unique // Checkout Session id / Polar checkout id
+  providerCustomerId  String?
+  status              String   @default("requires_payment_method")
+  amountCents         Int
+  amountRefundedCents Int      @default(0)
+  currency            String   @default("USD")
+  method              String? // card | wallet | paypal | manual
+  brand               String? // visa, mastercard, …
+  last4               String?
+  receiptUrl          String?
+  failureCode         String?
+  failureMessage      String?
+  metadata            String? // JSON
+  raw                 String? // JSON webhook/API payload
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  order   Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  refunds Refund[]
+
+  @@index([orderId])
+  @@index([status])
+  @@index([provider])
+}
+
+model Refund {
+  id               String   @id @default(cuid())
+  paymentId        String
+  providerRefundId String?  @unique
+  amountCents      Int
+  currency         String   @default("USD")
+  reason           String?
+  status           String   @default("pending") // pending | succeeded | failed | canceled
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([paymentId])
+}
+
+/// Raw webhook deliveries. Keeping them makes debugging (and replaying)
+/// failed events much easier.
+model WebhookEvent {
+  id          String    @id @default(cuid())
+  provider    String    @default("printful") // printful | stripe | polar
+  eventType   String
+  eventKey    String?
+  version     String?
+  payload     String
+  status      String    @default("received") // received | processed | ignored | failed
+  error       String?
+  createdAt   DateTime  @default(now())
+  processedAt DateTime?
+
+  @@unique([provider, eventKey])
+  @@index([provider, eventType])
+  @@index([status])
+}
+
+/// Admin/staff audit trail. `before`/`after` are JSON snapshots.
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  action     String
+  entityType String
+  entityId   String?
+  before     String?
+  after      String?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+/// Small key/value store used for integration settings such as the Printful
+/// webhook signing secret returned when webhooks are registered.
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}

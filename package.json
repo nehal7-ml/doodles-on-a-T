@@ -1,0 +1,48 @@
+{
+  "name": "doodles-on-a-T",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev --dotenv .env --dotenv .env.development",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "typecheck": "nuxt typecheck",
+    "postinstall": "prisma generate && nuxt prepare",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:push": "prisma db push",
+    "db:seed": "prisma db seed",
+    "db:studio": "prisma studio",
+    "db:turso:status": "bun scripts/db-turso.ts status",
+    "db:turso:deploy": "bun scripts/db-turso.ts deploy",
+    "printful:webhooks": "bun scripts/printful-webhooks.ts"
+  },
+  "dependencies": {
+    "@auth/core": "^0.41.3",
+    "@auth/prisma-adapter": "^2.11.3",
+    "@libsql/client": "^0.18.0",
+    "@lucide/vue": "^1.22.0",
+    "@node-rs/argon2": "^2.2.2",
+    "@nuxt/eslint": "^1.15.2",
+    "@nuxt/ui": "^4.8.0",
+    "@prisma/adapter-libsql": "7.10.1",
+    "@prisma/client": "7.10.1",
+    "@tailwindcss/vite": "^4.2.0",
+    "eslint": "^10.2.1",
+    "nuxt": "^4.6.2",
+    "stripe": "^23.1.0",
+    "tailwindcss": "^4.3.0",
+    "vue": "^3.5.28",
+    "vue-router": "^4.6.4"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.4.2",
+    "@iconify-json/heroicons": "^1.2.3",
+    "@types/node": "^26.6.5",
+    "prisma": "7.10.1",
+    "typescript": "^5.5.0",
+    "vue-tsc": "^3.3.13"
+  }
+}

@@ -1,0 +1,19 @@
+# Local env files (secrets stay on your machine)
+.env
+.env.*
+!.env.example
+
+# Local build artifacts
+.output
+.nuxt
+.nitro
+.data
+.vercel
+dist
+
+# Local SQLite database
+prisma/*.db
+prisma/*.db-journal
+
+# Logs
+*.log
