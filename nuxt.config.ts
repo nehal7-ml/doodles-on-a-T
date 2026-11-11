@@ -5,4 +5,12 @@ export default defineNuxtConfig({
   css: ["~/assets/css/main.css"],
 
   modules: ["@nuxt/ui", "@nuxt/eslint"],
+  app: {
+    head: {
+      htmlAttrs: {
+        lang: "en",
+      },
+      link: [{ rel: "icon", type: "image/x-icon", href: "/logo.png" }],
+    },
+  },
 });
