@@ -1,4 +1,5 @@
 import type {
+  Prisma,
   Product as DbProduct,
   ProductVariant as DbProductVariant,
 } from "../generated/prisma/client";
@@ -14,46 +15,43 @@ import { prisma } from "./prisma";
 
 export type SyncedProduct = DbProduct & { variants: DbProductVariant[] };
 
-const SIZE_ORDER = [
-  "XXS",
-  "XS",
-  "S",
-  "M",
-  "L",
-  "XL",
-  "XXL",
-  "2XL",
-  "3XL",
-  "4XL",
-  "5XL",
-  "6XL",
-];
-
 function unique<T>(values: T[]): T[] {
   return [...new Set(values)];
 }
 
-function sortSizes(sizes: string[]): string[] {
-  return unique(sizes.filter(Boolean)).sort((a, b) => {
-    const rankA = SIZE_ORDER.indexOf(a.toUpperCase());
-    const rankB = SIZE_ORDER.indexOf(b.toUpperCase());
-    if (rankA !== -1 || rankB !== -1) {
-      return (rankA === -1 ? 999 : rankA) - (rankB === -1 ? 999 : rankB);
-    }
-
-    const numberA = Number(a);
-    const numberB = Number(b);
-    if (!Number.isNaN(numberA) && !Number.isNaN(numberB))
-      return numberA - numberB;
-
-    return a.localeCompare(b);
-  });
-}
-
-function parseMoney(value: string | number | null | undefined): number | null {
+function parseMoneyAsCents(
+  value: string | number | null | undefined,
+): number | null {
   if (value === null || value === undefined || value === "") return null;
   const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
+  return Number.isFinite(parsed) ? Math.round(parsed * 100) : null;
+}
+
+function slugify(value: string): string {
+  return (
+    value
+      .toLowerCase()
+      .normalize("NFKD")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "product"
+  );
+}
+
+async function uniqueProductSlug(
+  tx: Prisma.TransactionClient,
+  name: string,
+  productId?: string,
+): Promise<string> {
+  const base = slugify(name);
+  for (let suffix = 1; suffix < 100; suffix++) {
+    const candidate = suffix === 1 ? base : `${base}-${suffix}`;
+    const clash = await tx.product.findUnique({
+      where: { slug: candidate },
+      select: { id: true },
+    });
+    if (!clash || clash.id === productId) return candidate;
+  }
+  return `${base}-${Date.now().toString(36)}`;
 }
 
 function previewUrl(variant: SyncProductInfo["sync_variants"][number]) {
@@ -106,14 +104,8 @@ function buildProductData(
     ].filter((url): url is string => Boolean(url)),
   );
 
-  const sizes = sortSizes(
-    activeVariants
-      .map((variant) => variant.size ?? "")
-      .filter((size) => Boolean(size)),
-  );
-
   const prices = activeVariants
-    .map((variant) => parseMoney(variant.retail_price))
+    .map((variant) => parseMoneyAsCents(variant.retail_price))
     .filter((price): price is number => price !== null);
 
   const currency =
@@ -125,14 +117,13 @@ function buildProductData(
       externalId: syncProduct.external_id,
       name: syncProduct.name,
       description: extras.description,
-      price: prices.length ? Math.min(...prices) : 0,
+      priceCents: prices.length ? Math.min(...prices) : 0,
       currency,
-      images: JSON.stringify(images),
-      sizes: JSON.stringify(sizes),
       thumbnailUrl: syncProduct.thumbnail_url,
-      isActive: !syncProduct.is_ignored,
+      status: syncProduct.is_ignored ? "archived" : "active",
       raw: JSON.stringify(syncProduct),
     },
+    images,
     variants: syncVariants.map((variant) => {
       const colorCode = extras.colorCodes.get(variant.variant_id) ?? null;
       const color = variant.color ?? null;
@@ -145,7 +136,7 @@ function buildProductData(
         size: variant.size ?? null,
         color,
         colors: JSON.stringify(colorCode ? [colorCode] : color ? [color] : []),
-        price: parseMoney(variant.retail_price),
+        priceCents: parseMoneyAsCents(variant.retail_price),
         currency: variant.currency ?? currency,
         image: previewUrl(variant),
         sku: variant.sku,
@@ -190,12 +181,18 @@ export async function syncPrintfulProduct(
         }
       }
 
+      const slug = await uniqueProductSlug(
+        tx,
+        mapped.product.name,
+        existing?.id,
+      );
+
       const product = existing
         ? await tx.product.update({
             where: { id: existing.id },
-            data: mapped.product,
+            data: { ...mapped.product, slug },
           })
-        : await tx.product.create({ data: mapped.product });
+        : await tx.product.create({ data: { ...mapped.product, slug } });
 
       const keptVariantIds: number[] = [];
 
@@ -242,9 +239,21 @@ export async function syncPrintfulProduct(
         data: { isActive: false, inStock: false },
       });
 
+      // Images are replaced wholesale, mirroring the Printful product.
+      await tx.productImage.deleteMany({ where: { productId: product.id } });
+      if (mapped.images.length) {
+        await tx.productImage.createMany({
+          data: mapped.images.map((url, position) => ({
+            productId: product.id,
+            url,
+            position,
+          })),
+        });
+      }
+
       return tx.product.findUniqueOrThrow({
         where: { id: product.id },
-        include: { variants: true },
+        include: { variants: true, images: true },
       });
     },
     // Remote libSQL databases add latency per query; a product with many
@@ -263,7 +272,7 @@ export async function deactivatePrintfulProduct(
 
   await prisma.product.update({
     where: { id: product.id },
-    data: { isActive: false },
+    data: { status: "archived" },
   });
   await prisma.productVariant.updateMany({
     where: { productId: product.id },
@@ -338,7 +347,7 @@ export async function syncAllPrintfulProducts(): Promise<SyncAllResult> {
   for (const product of stale) {
     await prisma.product.update({
       where: { id: product.id },
-      data: { isActive: false },
+      data: { status: "archived" },
     });
     await prisma.productVariant.updateMany({
       where: { productId: product.id },

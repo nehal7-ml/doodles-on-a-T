@@ -1,9 +1,9 @@
 import { createError } from "h3";
 import { cancelOrder, serializeOrder } from "../../../utils/orders";
-import { requireAdminToken } from "../../../utils/request";
+import { requireStaffOrToken } from "../../../utils/auth";
 
 export default defineEventHandler(async (event) => {
-  requireAdminToken(event);
+  await requireStaffOrToken(event);
 
   const id = getRouterParam(event, "id");
   if (!id) {

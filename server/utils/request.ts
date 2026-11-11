@@ -19,11 +19,19 @@ export function safeCompare(a: string, b: string): boolean {
  * Protects machine-to-machine endpoints (Printful sync/webhooks, CLI tools).
  *
  * Humans use Auth.js sessions and roles instead. Set ADMIN_TOKEN in production
- * and send it as `x-admin-token` or as a Bearer token. In development the check
- * is skipped when ADMIN_TOKEN is not set so local tooling keeps working.
+ * and send it as `x-admin-token` or as a Bearer token.
+ *
+ * In development the check is skipped when ADMIN_TOKEN is not set, so local
+ * tooling keeps working. Pass `allowDevBypass: false` for endpoints that also
+ * accept a browser session: without a token or session they must reject the
+ * request even on a development machine.
  */
-export function requireAdminToken(event: H3Event): void {
+export function requireAdminToken(
+  event: H3Event,
+  options: { allowDevBypass?: boolean } = {},
+): void {
   const expected = readEnv("ADMIN_TOKEN");
+  const allowDevBypass = options.allowDevBypass ?? true;
 
   if (!expected) {
     if (process.env.NODE_ENV === "production") {
@@ -33,7 +41,8 @@ export function requireAdminToken(event: H3Event): void {
           "ADMIN_TOKEN is not configured. Set it before using admin endpoints.",
       });
     }
-    return;
+    if (allowDevBypass) return;
+    throw createError({ statusCode: 401, statusMessage: "Unauthorized" });
   }
 
   const authorization = getHeader(event, "authorization");

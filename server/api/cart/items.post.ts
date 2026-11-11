@@ -7,6 +7,7 @@ import {
 import {
   MAX_ITEM_QUANTITY,
   STORE_CURRENCY,
+  getCartWithDetails,
   parseQuantity,
   parseVariantId,
   resolveCart,
@@ -43,7 +44,11 @@ export default defineEventHandler(async (event) => {
   if (!variant) {
     throw createError({ statusCode: 404, statusMessage: "Product not found." });
   }
-  if (!variant.isActive || !variant.inStock || !variant.product.isActive) {
+  if (
+    !variant.isActive ||
+    !variant.inStock ||
+    variant.product.status !== "active"
+  ) {
     throw createError({
       statusCode: 409,
       statusMessage: `${variant.product.name} is currently unavailable.`,
@@ -86,15 +91,13 @@ export default defineEventHandler(async (event) => {
     update: { quantity, unitPriceCents, currency },
   });
 
-  const updated = await prisma.cart.findUniqueOrThrow({
-    where: { id: cart.id },
-    include: {
-      items: {
-        orderBy: { createdAt: "asc" },
-        include: { variant: { include: { product: true } } },
-      },
-    },
-  });
+  const updated = await getCartWithDetails(cart.id);
+  if (!updated) {
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Cart could not be reloaded.",
+    });
+  }
 
   setResponseStatus(event, 201);
   return await serializeCart(updated);

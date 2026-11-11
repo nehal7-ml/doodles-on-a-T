@@ -88,7 +88,7 @@ export default defineEventHandler(async (event) => {
       null,
     shippingMethod: selected.id,
     shippingService: selected.name,
-    shippingCost: selected.rate,
+    shippingCents: Math.round(selected.rate * 100),
   });
 
   let result = order;

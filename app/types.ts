@@ -56,6 +56,8 @@ export type ProductOption = {
   size: string | null;
   color: string | null;
   price: number | null;
+  priceCents: number;
+  compareAtPriceCents?: number | null;
   currency: string | null;
   image: string | null;
   inStock: boolean;
@@ -69,6 +71,7 @@ export type ApparelVariant = {
   colors: string[];
   sizes: string[];
   price: number | null;
+  priceCents: number | null;
   currency: string | null;
   image: string | null;
   inStock: boolean;
@@ -76,11 +79,15 @@ export type ApparelVariant = {
 
 export type Product = {
   id: string;
+  slug: string;
+  status: string;
   printfulProductId: number | null;
   images: string[];
   thumbnailUrl: string | null;
   name: string;
   price: number;
+  priceCents: number;
+  compareAtPriceCents: number | null;
   currency: string;
   description: string;
   variants: ApparelVariant[];
@@ -91,10 +98,13 @@ export type Product = {
 export type OrderItem = {
   id: string;
   name: string;
+  sku: string | null;
   size: string | null;
   color: string | null;
   quantity: number;
   price: number;
+  unitPriceCents: number;
+  lineTotalCents: number;
   currency: string;
   productId: string | null;
   variantId: string | null;
@@ -114,6 +124,7 @@ export type Order = {
   status: string;
   statusLabel: string;
   paymentStatus: string;
+  printfulStatus: string | null;
   refundedCents: number;
   userId: string | null;
   printfulOrderId: number | null;
@@ -123,6 +134,7 @@ export type Order = {
     method: string | null;
     service: string | null;
     cost: number;
+    costCents: number;
     currency: string;
   };
   totals: {
@@ -133,7 +145,29 @@ export type Order = {
     total: number;
     currency: string;
   };
+  totalsCents: {
+    subtotal: number;
+    discount: number;
+    tax: number;
+    shipping: number;
+    total: number;
+    currency: string;
+  };
   recipient: Record<string, unknown>;
+  addresses: Array<{
+    id: string;
+    kind: string;
+    name: string;
+    company: string | null;
+    line1: string;
+    line2: string | null;
+    city: string;
+    state: string | null;
+    postalCode: string | null;
+    countryCode: string;
+    phone: string | null;
+    email: string | null;
+  }>;
   tracking: {
     number: string | null;
     url: string | null;

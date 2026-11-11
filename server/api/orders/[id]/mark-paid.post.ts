@@ -7,14 +7,14 @@ import {
   submitOrderToPrintful,
 } from "../../../utils/orders";
 import { prisma } from "../../../utils/prisma";
-import { requireAdmin } from "../../../utils/auth";
+import { requireAdminOrToken } from "../../../utils/auth";
 
 /**
  * Admin/manual settlement. Only manual (bank transfer, cash) payments may be
  * marked paid by hand; a Stripe payment must arrive through its webhook.
  */
 export default defineEventHandler(async (event) => {
-  const admin = await requireAdmin(event);
+  const admin = await requireAdminOrToken(event);
   assertSameOrigin(event);
 
   const id = getRouterParam(event, "id");
@@ -55,7 +55,7 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  const amountCents = Math.round(order.total * 100);
+  const amountCents = order.totalCents;
   const payment = order.payments[0];
 
   await prisma.$transaction(async (tx) => {
@@ -103,7 +103,7 @@ export default defineEventHandler(async (event) => {
 
     await tx.auditLog.create({
       data: {
-        actorId: admin.id,
+        actorId: admin?.id ?? null,
         action: "order.mark_paid",
         entityType: "Order",
         entityId: order.id,

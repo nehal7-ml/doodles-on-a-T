@@ -1,4 +1,5 @@
 import { createError } from "h3";
+import { getSessionUser, hasRole } from "../../utils/auth";
 import {
   getOrderDetails,
   refreshOrderFromPrintful,
@@ -7,7 +8,12 @@ import {
 import { requireAdminToken } from "../../utils/request";
 
 export default defineEventHandler(async (event) => {
-  requireAdminToken(event);
+  const user = await getSessionUser(event);
+  const privileged = Boolean(user && hasRole(user, ["staff", "admin"]));
+
+  if (!user) {
+    requireAdminToken(event, { allowDevBypass: false });
+  }
 
   const id = getRouterParam(event, "id");
   if (!id) {
@@ -17,20 +23,19 @@ export default defineEventHandler(async (event) => {
   const query = getQuery(event);
   const shouldRefresh = query.refresh === "true" || query.refresh === "1";
 
-  if (shouldRefresh) {
-    const existing = await getOrderDetails(id);
-    if (!existing) {
-      throw createError({ statusCode: 404, statusMessage: "Order not found" });
-    }
-    if (existing.printfulOrderId) {
-      return serializeOrder(await refreshOrderFromPrintful(id));
-    }
-  }
-
-  const order = await getOrderDetails(id);
-  if (!order) {
+  const existing = await getOrderDetails(id);
+  if (!existing) {
     throw createError({ statusCode: 404, statusMessage: "Order not found" });
   }
 
-  return serializeOrder(order);
+  // A customer may read their own order, but never refresh it from Printful.
+  if (!privileged && existing.userId !== user?.id) {
+    throw createError({ statusCode: 404, statusMessage: "Order not found" });
+  }
+
+  if (shouldRefresh && privileged && existing.printfulOrderId) {
+    return serializeOrder(await refreshOrderFromPrintful(id));
+  }
+
+  return serializeOrder(existing);
 });

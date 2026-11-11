@@ -5,6 +5,7 @@ import {
   setHeader,
 } from "h3";
 import {
+  getCartWithDetails,
   parseQuantity,
   resolveCart,
   serializeCart,
@@ -51,15 +52,13 @@ export default defineEventHandler(async (event) => {
     data: { quantity },
   });
 
-  const updated = await prisma.cart.findUniqueOrThrow({
-    where: { id: cart.id },
-    include: {
-      items: {
-        orderBy: { createdAt: "asc" },
-        include: { variant: { include: { product: true } } },
-      },
-    },
-  });
+  const updated = await getCartWithDetails(cart.id);
+  if (!updated) {
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Cart could not be reloaded.",
+    });
+  }
 
   return await serializeCart(updated);
 });

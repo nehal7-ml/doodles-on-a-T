@@ -1,6 +1,7 @@
 import type {
   Prisma,
   Product as DbProduct,
+  ProductImage as DbProductImage,
   ProductVariant as DbProductVariant,
 } from "../generated/prisma/client";
 import type { Product, ProductOption } from "~~/app/types";
@@ -8,7 +9,10 @@ import { prisma } from "./prisma";
 
 export type ProductSort = "featured" | "price-asc" | "price-desc" | "name";
 
-type ProductWithVariants = DbProduct & { variants: DbProductVariant[] };
+type ProductWithVariants = DbProduct & {
+  variants: DbProductVariant[];
+  images: DbProductImage[];
+};
 
 const SIZE_ORDER = [
   "XXS",
@@ -68,20 +72,31 @@ function slugify(value: string): string {
   );
 }
 
-function variantPrice(variant: DbProductVariant, fallback: number): number {
-  return variant.price ?? fallback;
+/** Cents are the storage unit; the public catalog API keeps major units. */
+export function toMajorUnits(cents: number | null | undefined): number {
+  return typeof cents === "number" && Number.isFinite(cents) ? cents / 100 : 0;
+}
+
+function variantPriceCents(
+  variant: DbProductVariant,
+  fallbackCents: number,
+): number {
+  return variant.priceCents ?? fallbackCents;
 }
 
 function toProductOption(
   variant: DbProductVariant,
-  fallbackPrice: number,
+  fallbackCents: number,
 ): ProductOption {
+  const priceCents = variantPriceCents(variant, fallbackCents);
   return {
     id: variant.id,
     name: variant.name,
     size: variant.size,
     color: variant.color,
-    price: variant.price ?? fallbackPrice,
+    price: toMajorUnits(priceCents),
+    priceCents,
+    compareAtPriceCents: variant.compareAtPriceCents,
     currency: variant.currency,
     image: variant.image,
     inStock: variant.inStock && variant.isActive,
@@ -92,7 +107,7 @@ function toProductOption(
 function toProduct(product: ProductWithVariants): Product {
   const activeVariants = product.variants.filter((variant) => variant.isActive);
   const options = activeVariants.map((variant) =>
-    toProductOption(variant, product.price),
+    toProductOption(variant, product.priceCents),
   );
 
   const groups = new Map<
@@ -123,7 +138,7 @@ function toProduct(product: ProductWithVariants): Product {
 
     group.colors.push(...parseStringArray(variant.colors));
     if (variant.size) group.sizes.push(variant.size);
-    group.prices.push(variantPrice(variant, product.price));
+    group.prices.push(variantPriceCents(variant, product.priceCents));
     group.currency ??= variant.currency;
     group.image ??= variant.image;
     group.inStock ||= variant.inStock;
@@ -132,17 +147,26 @@ function toProduct(product: ProductWithVariants): Product {
   }
 
   const prices = activeVariants.map((variant) =>
-    variantPrice(variant, product.price),
+    variantPriceCents(variant, product.priceCents),
   );
-  const images = parseStringArray(product.images);
+  const images = product.images
+    .slice()
+    .sort((a, b) => a.position - b.position)
+    .map((image) => image.url);
+  const thumbnailUrl = product.thumbnailUrl ?? images[0] ?? null;
+  const priceCents = prices.length ? Math.min(...prices) : product.priceCents;
 
   return {
     id: product.id,
+    slug: product.slug,
+    status: product.status,
     printfulProductId: product.printfulProductId,
     images,
-    thumbnailUrl: product.thumbnailUrl ?? images[0] ?? null,
+    thumbnailUrl,
     name: product.name,
-    price: prices.length ? Math.min(...prices) : product.price,
+    price: toMajorUnits(priceCents),
+    priceCents,
+    compareAtPriceCents: product.compareAtPriceCents,
     currency: product.currency,
     description: product.description,
     variants: [...groups.entries()].map(([id, group]) => ({
@@ -150,7 +174,10 @@ function toProduct(product: ProductWithVariants): Product {
       name: group.name,
       colors: unique(group.colors),
       sizes: sortSizes(group.sizes),
-      price: group.prices.length ? Math.min(...group.prices) : null,
+      price: group.prices.length
+        ? toMajorUnits(Math.min(...group.prices))
+        : null,
+      priceCents: group.prices.length ? Math.min(...group.prices) : null,
       currency: group.currency,
       image: group.image,
       inStock: group.inStock,
@@ -163,11 +190,20 @@ function toProduct(product: ProductWithVariants): Product {
 function getOrderBy(
   sort: ProductSort,
 ): Prisma.ProductOrderByWithRelationInput {
-  if (sort === "price-asc") return { price: "asc" };
-  if (sort === "price-desc") return { price: "desc" };
+  if (sort === "price-asc") return { priceCents: "asc" };
+  if (sort === "price-desc") return { priceCents: "desc" };
   if (sort === "name") return { name: "asc" };
   return { createdAt: "desc" };
 }
+
+const productInclude = {
+  variants: {
+    orderBy: { name: "asc" as const },
+  },
+  images: {
+    orderBy: { position: "asc" as const },
+  },
+} satisfies Prisma.ProductInclude;
 
 export async function listProducts(
   options: {
@@ -179,7 +215,7 @@ export async function listProducts(
   const { search = "", sort = "featured", limit } = options;
 
   const where: Prisma.ProductWhereInput = {
-    isActive: true,
+    status: "active",
     ...(search
       ? {
           OR: [
@@ -193,29 +229,23 @@ export async function listProducts(
   const products = await prisma.product.findMany({
     where,
     orderBy: getOrderBy(sort),
-    include: {
-      variants: {
-        where: { isActive: true },
-        orderBy: { name: "asc" },
-      },
-    },
+    include: productInclude,
     ...(limit ? { take: limit } : {}),
   });
 
   return products.map(toProduct);
 }
 
-export async function getProductById(id: string): Promise<Product | undefined> {
-  const product = await prisma.product.findUnique({
-    where: { id },
-    include: {
-      variants: {
-        where: { isActive: true },
-        orderBy: { name: "asc" },
-      },
+export async function getProductById(
+  idOrSlug: string,
+): Promise<Product | undefined> {
+  const product = await prisma.product.findFirst({
+    where: {
+      OR: [{ id: idOrSlug }, { slug: idOrSlug }],
+      status: "active",
     },
+    include: productInclude,
   });
 
-  if (!product || !product.isActive) return undefined;
-  return toProduct(product);
+  return product ? toProduct(product) : undefined;
 }

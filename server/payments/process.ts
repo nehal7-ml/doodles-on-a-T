@@ -61,7 +61,7 @@ async function createMissingPayment(
   const amountCents =
     event.type === "payment_succeeded" && event.amountCents > 0
       ? event.amountCents
-      : Math.round(order.total * 100);
+      : order.totalCents;
 
   return prisma.payment.create({
     data: {
@@ -98,7 +98,7 @@ export async function sendOrderConfirmation(orderId: string): Promise<void> {
   const template = orderConfirmationEmail({
     name: order.customerName,
     orderNumber: order.orderNumber,
-    total: money(Math.round(order.total * 100), order.currency),
+    total: money(order.totalCents, order.currency),
     items: order.items.map((item) => ({
       name: item.size ? `${item.name} (${item.size})` : item.name,
       quantity: item.quantity,

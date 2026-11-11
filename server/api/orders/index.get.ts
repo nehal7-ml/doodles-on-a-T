@@ -1,10 +1,18 @@
 import type { Prisma } from "../../generated/prisma/client";
+import { getSessionUser, hasRole } from "../../utils/auth";
 import { serializeOrder } from "../../utils/orders";
 import { prisma } from "../../utils/prisma";
 import { requireAdminToken } from "../../utils/request";
 
 export default defineEventHandler(async (event) => {
-  requireAdminToken(event);
+  const user = await getSessionUser(event);
+  const privileged = Boolean(user && hasRole(user, ["staff", "admin"]));
+
+  // Signed-in customers only see their own orders. Guests/machines must use
+  // the admin token (and staff/admin sessions see the full list).
+  if (!user) {
+    requireAdminToken(event, { allowDevBypass: false });
+  }
 
   const query = getQuery(event);
   const status = typeof query.status === "string" ? query.status : undefined;
@@ -19,6 +27,7 @@ export default defineEventHandler(async (event) => {
   );
 
   const where: Prisma.OrderWhereInput = {
+    ...(user && !privileged ? { userId: user.id } : {}),
     ...(status ? { status } : {}),
     ...(email ? { email: { contains: email } } : {}),
   };
@@ -29,6 +38,7 @@ export default defineEventHandler(async (event) => {
       where,
       include: {
         items: true,
+        addresses: true,
         events: { orderBy: { createdAt: "desc" } },
       },
       orderBy: { createdAt: "desc" },

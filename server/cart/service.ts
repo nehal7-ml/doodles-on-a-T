@@ -10,6 +10,7 @@ import type {
   Cart,
   CartItem,
   Product,
+  ProductImage,
   ProductVariant,
 } from "../generated/prisma/client";
 import { usesSecureCookies } from "../auth/session";
@@ -20,8 +21,14 @@ export const CART_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 export const MAX_ITEM_QUANTITY = 99;
 export const STORE_CURRENCY = "USD";
 
+type ProductWithImages = Product & { images: ProductImage[] };
+
 export type CartWithDetails = Cart & {
-  items: Array<CartItem & { variant: ProductVariant & { product: Product } }>;
+  items: Array<
+    CartItem & {
+      variant: ProductVariant & { product: ProductWithImages };
+    }
+  >;
 };
 
 export type CartViewItem = {
@@ -59,7 +66,11 @@ const cartInclude = {
     orderBy: { createdAt: "asc" as const },
     include: {
       variant: {
-        include: { product: true },
+        include: {
+          product: {
+            include: { images: { orderBy: { position: "asc" as const } } },
+          },
+        },
       },
     },
   },
@@ -78,16 +89,16 @@ function isExpired(cart: Cart): boolean {
   return Boolean(cart.expiresAt && cart.expiresAt.getTime() <= Date.now());
 }
 
-/** Product/variant prices are legacy major-unit Floats; carts store cents. */
+/** Product/variant prices are stored in integer cents. */
 export function toCents(value: number | null | undefined): number {
   if (typeof value !== "number" || !Number.isFinite(value)) return 0;
-  return Math.max(0, Math.round(value * 100));
+  return Math.max(0, Math.round(value));
 }
 
 export function variantPriceCents(
   variant: ProductVariant & { product: Product },
 ): number {
-  return toCents(variant.price ?? variant.product.price);
+  return variant.priceCents ?? variant.product.priceCents;
 }
 
 export function variantCurrency(
@@ -96,22 +107,12 @@ export function variantCurrency(
   return variant.currency ?? variant.product.currency ?? STORE_CURRENCY;
 }
 
-function imageUrl(variant: ProductVariant & { product: Product }): string | null {
+function imageUrl(
+  variant: ProductVariant & { product: ProductWithImages },
+): string | null {
   if (variant.image) return variant.image;
   if (variant.product.thumbnailUrl) return variant.product.thumbnailUrl;
-  try {
-    const images: unknown = JSON.parse(variant.product.images);
-    if (
-      Array.isArray(images) &&
-      typeof images[0] === "string" &&
-      images[0].length > 0
-    ) {
-      return images[0];
-    }
-  } catch {
-    // Invalid JSON in the legacy column: fall through to null.
-  }
-  return null;
+  return variant.product.images[0]?.url ?? null;
 }
 
 export function emptyCartView(): CartView {
@@ -157,7 +158,7 @@ export async function serializeCart(
     const available =
       item.variant.isActive &&
       item.variant.inStock &&
-      item.variant.product.isActive;
+      item.variant.product.status === "active";
     const lineTotalCents = currentPrice * item.quantity;
 
     itemCount += item.quantity;

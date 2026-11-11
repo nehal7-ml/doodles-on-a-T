@@ -1,6 +1,6 @@
 # Database architecture
 
-Status: **implemented through phase 4** — 2026-11-09 (additive order/payment fields included)
+Status: **implemented through phase 5, phase 6 partial** — 2026-11-11. Phases 1, 3, 4 and 5 are implemented; phase 2 (saved addresses / phones / billing profile) is deliberately deferred; phase 6 covers role enforcement on the order endpoints but has no admin UI yet.
 Audience: every session/agent working on storefront, checkout, admin, payments or Printful.
 
 > This file is the source of truth for the data model. If code and this document
@@ -16,13 +16,13 @@ Audience: every session/agent working on storefront, checkout, admin, payments o
 - Auth: **Auth.js (`@auth/core`) with database sessions** (opaque token in an httpOnly cookie). No JWT sessions.
 - Email/password uses **custom endpoints that write the same `Session` row/cookie**, because Auth.js's `Credentials` provider only supports JWT sessions (see §6.1). Google OAuth goes through Auth.js normally.
 - Roles live on `User.role`: `customer` (default), `staff`, `admin`.
-- Money is stored as **integer minor units** (`Int`, cents). `Float` money is legacy and is removed in phase 5.
+- Money is stored as **integer minor units** (`Int`, cents) in `*Cents` columns. No `Float` money remains after phase 5.
 - IDs are `cuid()` strings. Timestamps are UTC.
 - SQLite has no enums and no scalar lists: enum-like columns are `String` with documented values; arrays are JSON text (`colors`) or relation tables (`ProductImage`).
 - Guest checkout is allowed. `Order.userId` is nullable; `Order.email` is always present.
 - The cart is server-side (`Cart` / `CartItem`) for both guests and logged-in users.
 - Every order stores **snapshots** of its addresses and items; editing a user's saved address later must not change history.
-- The existing `ADMIN_TOKEN` check stays only as a machine-to-machine fallback for Printful/CLI calls. Browsers and humans use sessions + roles.
+- `ADMIN_TOKEN` is a machine-to-machine fallback for Printful/CLI calls and the admin order endpoints (`mark-paid`, `refund`, `confirm`, …). Browsers and humans use sessions + roles. The order endpoints reject anonymous requests even in local development when no token is configured.
 - Payments go through a **provider adapter** (`server/payments/*`, selected by `PAYMENT_PROVIDER`). Stripe is the default; see [`docs/payments.md`](payments.md). Nothing outside `server/payments/` may import a provider SDK.
 - Transactional email is a separate `EmailProvider` adapter (Resend by default). Payment receipts come from the payment provider; order/shipping/auth emails come from our app.
 - Never trust prices, totals, roles, or user ids sent by the client.
@@ -39,7 +39,7 @@ Audience: every session/agent working on storefront, checkout, admin, payments o
 | Login methods | Email/password (custom endpoint writing `Session` rows) + **Google OAuth** (Auth.js). See §6.1 and `docs/payments.md` §6. |
 | Roles | `customer`, `staff`, `admin` (string column, app-enforced) |
 | Payments | Provider-agnostic adapter; **Stripe** is the default (`provider = "stripe"`). Polar was evaluated and rejected for physical goods (`docs/payments.md`). |
-| Payment UX | Stripe PaymentIntent (`clientSecret`) or hosted redirect; the webhook is the only source of truth |
+| Payment UX | Stripe **hosted Checkout** (redirect) is the default; the webhook is the only source of truth. The schema also permits a client `clientSecret` flow. |
 | Email | `EmailProvider` adapter; **Resend** free tier by default; `console` in dev. Provider sends receipts, we send order/shipping/auth mail. |
 | Money | `Int` cents everywhere (`*Cents`), currency ISO-4217 per row |
 | Cart | One active cart per user; guests get a random `Cart.token` cookie |
@@ -75,6 +75,10 @@ erDiagram
   Payment ||--o{ Refund : "refunded by"
   ProductVariant ||--o{ OrderItem : "referenced"
 ```
+
+`Address`, `PhoneNumber` and `BillingProfile` are shown for the intended shape
+but are **not implemented yet** (phase 2 is deferred). Orders store their
+address snapshot in `OrderAddress`.
 
 ---
 
@@ -197,7 +201,12 @@ model PasswordResetToken {
 - Expired sessions are cleaned up opportunistically on login and by a daily job/endpoint.
 - `Session.userAgent` / `ipAddress` are filled by the custom session helper, not the adapter.
 
-### 4.2 Phones, addresses, billing
+### 4.2 Phones, addresses, billing — **deferred (phase 2)**
+
+> Not implemented yet. The models below are the agreed shape for a future
+> migration. Checkout currently collects a shipping address and snapshots it
+> into `OrderAddress`; there is no saved-address book, phone verification or
+> billing-profile endpoint. Do not assume these tables exist.
 
 ```prisma
 model PhoneNumber {
@@ -852,10 +861,14 @@ export async function getSessionUser(event: H3Event) {
   Auth.js when the client calls `/api/auth/session`; long-lived server-only
   sessions that never hit that endpoint still expire after `maxAge`. Add the
   refresh to `getSessionUser` if server-only apps are added.
-- The legacy token helper is renamed `requireAdminToken(event)` and is only
-  used by `/api/printful/*` and automation. Admin endpoints accept **either** a
-  valid admin session or the token (documented transition). New endpoints use
-  roles only.
+- `requireStaffOrToken` / `requireAdminOrToken` accept a session with the right
+  role **or** `ADMIN_TOKEN`. For these endpoints the token check is strict:
+  when `ADMIN_TOKEN` is unset, local development still rejects anonymous
+  requests with 401 (only the Printful/CLI machine routes keep the
+  “no token required in dev” shortcut).
+- `requireAdminToken(event)` is only used by `/api/printful/*` and automation.
+  Admin order endpoints accept **either** a valid admin/staff session or the
+  token; a signed-in customer is always rejected with 403.
 
 ### 6.8 Cookies & security
 
@@ -887,6 +900,9 @@ export async function getSessionUser(event: H3Event) {
 
 ## 7. API surface affected
 
+Everything marked “New” below is implemented as of phase 5. Rows marked
+“Planned” or “Phase 2 — deferred” are not in the codebase yet.
+
 | Endpoint | Change |
 | --- | --- |
 | `ALL /api/auth/*` | New — Auth.js handler (`session`, `signout`, `csrf`, OAuth callbacks) |
@@ -895,11 +911,11 @@ export async function getSessionUser(event: H3Event) {
 | `POST /api/auth/login`, `/logout`, `/logout-all` | New — custom credentials flow (§6.3) |
 | `POST /api/auth/forgot-password`, `/reset-password` | New — `PasswordResetToken` flow |
 | `GET /api/auth/callback/google` | New — Google OAuth (Auth.js); register `{AUTH_URL}/api/auth/callback/google` |
-| `POST /api/account/security/link-google` | New — link Google to a signed-in password account (no auto-link by email) |
-| `GET/PATCH /api/account` | New — profile |
-| `GET/POST /api/account/addresses`, `PATCH/DELETE /api/account/addresses/{id}` | New |
-| `GET/POST /api/account/phones`, `DELETE /api/account/phones/{id}` | New |
-| `GET/PATCH /api/account/billing` | New — `BillingProfile` |
+| `POST /api/account/security/link-google` | Planned — link Google to a signed-in password account (no auto-link by email; not implemented) |
+| `GET/PATCH /api/account` | Planned — profile edits (not implemented; `/account` is read-only) |
+| `GET/POST /api/account/addresses`, `PATCH/DELETE /api/account/addresses/{id}` | Phase 2 — deferred |
+| `GET/POST /api/account/phones`, `DELETE /api/account/phones/{id}` | Phase 2 — deferred |
+| `GET/PATCH /api/account/billing` | Phase 2 — deferred (`BillingProfile`) |
 | `GET /api/cart`, `POST /api/cart/items`, `PATCH/DELETE /api/cart/items/{id}` | New — server cart, guest token cookie |
 | `POST /api/checkout` | New — cart → order + provider session; returns `{ clientSecret }` or `{ redirectUrl }` |
 | `POST /api/payments/webhook/[provider]` | New — signature-verified, idempotent via `WebhookEvent(provider, eventKey)`; adapters in `server/payments/` |
@@ -926,33 +942,44 @@ bun run db:turso:deploy            # apply the same migrations to Turso
 bun run db:generate                # regenerate the client (postinstall does this)
 ```
 
-Phases (each is a separate migration unless noted):
+Phases (each is a separate migration unless noted). Status as of 2026-11-11:
 
-| Phase | Contents | Breaking? |
-| --- | --- | --- |
-| 1 | `User`, `Account`, `Session`, `VerificationToken`, `PasswordResetToken`; `User.role` seed | no |
-| 2 | `PhoneNumber`, `Address`, `BillingProfile` | no |
-| 3 | `Cart`, `CartItem` | no |
-| 4 | `Payment` (incl. `providerCheckoutId`), `Refund`, `WebhookEvent.provider`, `AuditLog`; additive `Order.userId`, `Order.paymentStatus`, `Order.refundedCents` so checkout/webhooks can ship before the money rewrite | no (all additions have defaults/nulls) |
-| 5 | Money → `*Cents` on Product/Variant/Order/OrderItem; `ProductImage`; `Product.status`; `OrderAddress`; `Order.printfulStatus` | **yes** — code + data |
-| 6 | Role enforcement, admin UI, legacy `ADMIN_TOKEN` reduced to machine calls | code only |
+| Phase | Contents | Breaking? | Status |
+| --- | --- | --- | --- |
+| 1 | `User`, `Account`, `Session`, `VerificationToken`, `PasswordResetToken`; `User.role` seed | no | **implemented** |
+| 2 | `PhoneNumber`, `Address`, `BillingProfile` | no | **deferred** — checkout snapshots `OrderAddress`, so no saved-address feature is needed yet |
+| 3 | `Cart`, `CartItem` | no | **implemented** |
+| 4 | `Payment` (incl. `providerCheckoutId`), `Refund`, `WebhookEvent.provider`, `AuditLog`; additive `Order.userId`, `Order.paymentStatus`, `Order.refundedCents` so checkout/webhooks can ship before the money rewrite | no (all additions have defaults/nulls) | **implemented** |
+| 5 | Money → `*Cents` on Product/Variant/Order/OrderItem; `ProductImage`; `Product.status`; `OrderAddress`; `Order.printfulStatus` | **yes** — code + data | **implemented** (`20261110090000_phase5_cents_catalog`) |
+| 6 | Role enforcement, admin UI, legacy `ADMIN_TOKEN` reduced to machine calls | code only | **partial** — session roles enforced on order read/confirm/cancel/submit/sync; `mark-paid`/`refund` are admin-session-or-token; Printful sync/webhooks still use `ADMIN_TOKEN`; no admin UI |
 
-Phase 5 details:
+Phase 5 details (implemented in `20261110090000_phase5_cents_catalog`):
 
-- Multiply existing `price`, `subtotal`, `discount`, `tax`, `shippingCost`,
-  `total`, `OrderItem.price` by 100 and round.
-- Backfill `ProductImage` from `Product.images` JSON, then drop the column.
-- Drop the legacy `Product.sizes` JSON column (sizes live on `ProductVariant.size`).
-- Add `Product.slug` with a slugified `name` backfill (dedupe with `-2`, `-3`), then make it required and `@unique`.
-- `Order.email` becomes required; backfill existing rows with a placeholder and treat them as guest orders.
-- Backfill `OrderAddress` from `Order.recipient` JSON (`kind = "shipping"`),
-  keep `recipient` until the Printful code is switched over.
-- Map `isActive` → `status` (`true → active`, `false → archived`).
-- New catalog columns (`compareAtPriceCents`, `ProductImage`, `Category`) start empty; the Printful sync repopulates them.
-- Update `server/utils/products.ts`, `orders.ts`, `checkout.ts`, `shipping.ts`,
-  `app/types.ts` and `app/utils/formatPrice.ts` in the same change.
-- Production currently has only synced products and no orders, so a reset is
-  acceptable if the backfill proves messy — confirm before doing it.
+- Existing `price`, `subtotal`, `discount`, `tax`, `shippingCost`,
+  `total`, `OrderItem.price` were multiplied by 100 and rounded into the new
+  `*Cents` columns.
+- `ProductImage` was backfilled from `Product.images` JSON, then the legacy
+  `Product.images` and `Product.sizes` columns were dropped (sizes live on
+  `ProductVariant.size`).
+- `Product.slug` was backfilled from a slugified `name` plus a short random
+  suffix, then made required and `@unique`. The Printful sync uses a
+  name-based dedupe slug.
+- `Order.email` became required; existing rows were backfilled with `''` and
+  are treated as guest orders.
+- `OrderAddress` was backfilled from `Order.recipient` JSON
+  (`kind = "shipping"`); the legacy `recipient` column was dropped.
+- `isActive` was mapped to `status` (`true → active`, `false → archived`)
+  for products only. Variants keep `isActive` / `inStock`.
+- New catalog columns (`compareAtPriceCents`, `Image`, `Category`) start
+  empty; the Printful sync repopulates them.
+- Code was updated in `server/utils/products.ts`, `orders.ts`,
+  `printful-sync.ts`, `server/cart/service.ts`, `server/checkout/service.ts`,
+  `server/payments/process.ts`, `app/types.ts` and the order/cart endpoints.
+  The catalog API still exposes major-unit `price` for the current UI and adds
+  `priceCents`; order responses expose both `totals` and `totalsCents`.
+- The migration is data-preserving. The old note that “production has only
+  synced products and no orders” still means a reset would be safe, but it is
+  not required.
 
 After each phase: `bun run typecheck` and a dev smoke test (`/api/products`,
 `/api/auth/session`, cart endpoints).
@@ -961,12 +988,16 @@ After each phase: `bun run typecheck` and a dev smoke test (`/api/products`,
 
 ## 9. Seed and environment
 
-`prisma/seed.ts` must:
+`prisma/seed.ts` does two independent things:
 
 - Create/update the admin from `ADMIN_EMAIL` + `ADMIN_PASSWORD` (role `admin`,
-  Argon2id hash). Skip silently when unset; never log the password.
-- Optionally create a `customer@example.com` demo user outside production.
-- Keep the existing product fixtures.
+  Argon2id hash). Skips when unset; never logs the password. The upsert runs
+  unconditionally so a deployed admin can be rotated by running the seed.
+- Reset the demo catalogue from `app/testData/products.json` only when
+  `SEED_PRODUCTS=true`. This deletes existing products/variants/images first, so
+  never set it against a live catalogue. The fixtures create `slug`,
+  `status = "active"`, cents prices, `ProductImage` rows and one variant per
+  colour × size.
 
 New environment variables (document in `.env.example`, never commit real values):
 
@@ -996,7 +1027,8 @@ SMTP_URL=""               # only for EMAIL_PROVIDER=smtp
 
 # Seed
 ADMIN_EMAIL=""
-ADMIN_PASSWORD=""         # seed only
+ADMIN_PASSWORD=""         # seed only, min 12 characters
+SEED_PRODUCTS="false"     # true = wipe and recreate demo products
 ```
 
 Production (Turso + host env) uses the same names; Nitro does not read `.env*`

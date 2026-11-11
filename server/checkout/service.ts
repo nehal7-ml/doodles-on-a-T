@@ -69,7 +69,7 @@ async function buildOrder(
     if (
       !variant.isActive ||
       !variant.inStock ||
-      !variant.product.isActive
+      variant.product.status !== "active"
     ) {
       throw createError({
         statusCode: 409,
@@ -132,23 +132,39 @@ async function buildOrder(
       customerName: input.customerName ?? input.recipient.name ?? null,
       shippingMethod: selected.id,
       shippingService: selected.name,
-      shippingCost: shippingCents / 100,
-      subtotal: subtotalCents / 100,
-      discount: 0,
-      tax: 0,
-      total: totalCents / 100,
+      shippingCents,
+      subtotalCents,
+      discountCents: 0,
+      taxCents: 0,
+      totalCents,
       currency: STORE_CURRENCY,
-      recipient: JSON.stringify(input.recipient),
+      addresses: {
+        create: {
+          kind: "shipping",
+          name: input.recipient.name ?? input.customerName ?? "Customer",
+          company: input.recipient.company ?? null,
+          line1: input.recipient.address1 ?? "",
+          line2: input.recipient.address2 ?? null,
+          city: input.recipient.city ?? "",
+          state: input.recipient.state_code ?? null,
+          postalCode: input.recipient.zip ?? null,
+          countryCode: input.recipient.country_code,
+          phone: input.recipient.phone ?? null,
+          email: input.email,
+        },
+      },
       items: {
         create: cart.items.map((item) => ({
           productId: item.variant.productId,
           variantId: item.variantId,
           printfulVariantId: item.variant.printfulVariantId,
           name: item.variant.product.name,
+          sku: item.variant.sku,
           size: item.variant.size,
           color: item.variant.color,
           quantity: item.quantity,
-          price: variantPriceCents(item.variant) / 100,
+          unitPriceCents: variantPriceCents(item.variant),
+          lineTotalCents: variantPriceCents(item.variant) * item.quantity,
           currency: STORE_CURRENCY,
         })),
       },
@@ -161,6 +177,7 @@ async function buildOrder(
     },
     include: {
       items: true,
+      addresses: true,
       events: { orderBy: { createdAt: "desc" } },
     },
   });

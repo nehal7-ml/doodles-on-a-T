@@ -78,10 +78,15 @@ Each Sync Variant becomes a `ProductVariant` row with:
 
 - `printfulVariantId` — the sync variant id sent when creating an order
 - `catalogVariantId` — the blank catalog variant id used for shipping quotes
-- `size`, `color`, `price`, `currency`, `image`, `sku`, `inStock`
+- `size`, `color`, `priceCents`, `currency`, `image`, `sku`, `inStock`
 
-Variants that disappear from Printful are marked `isActive = false` instead of
-being deleted, so historical orders keep their snapshot.
+Product images are replaced wholesale into `ProductImage` on every sync (the
+Printful thumbnail first, then each variant preview). The product's
+`priceCents` is the minimum active variant price.
+
+Products that disappear from Printful are marked `status = "archived"`, and
+variants that disappear are marked `isActive = false` instead of being deleted,
+so historical orders keep their snapshot.
 
 Sync a single product:
 
@@ -220,8 +225,12 @@ See `docs/storefront.md` for how the pages consume this data.
 ```json
 {
   "id": "…",
+  "slug": "doodle-tee",
+  "status": "active",
   "name": "Doodle Tee",
   "price": 32,
+  "priceCents": 3200,
+  "compareAtPriceCents": null,
   "currency": "USD",
   "images": ["…"],
   "thumbnailUrl": "…",
@@ -233,6 +242,7 @@ See `docs/storefront.md` for how the pages consume this data.
       "colors": ["#ffffff"],
       "sizes": ["S", "M", "L"],
       "price": 32,
+      "priceCents": 3200,
       "inStock": true
     }
   ],
@@ -243,6 +253,7 @@ See `docs/storefront.md` for how the pages consume this data.
       "size": "M",
       "color": "White",
       "price": 32,
+      "priceCents": 3200,
       "currency": "USD",
       "inStock": true
     }
@@ -252,7 +263,10 @@ See `docs/storefront.md` for how the pages consume this data.
 
 - `variants` are grouped by colour for swatches.
 - `options` is the flat list of purchasable combinations. Send an option's
-  `id` as `items[].variantId` when creating an order.
+  `id` as `variantId` to `POST /api/cart/items`, or as `items[].variantId` when
+  using the legacy `POST /api/orders` flow.
+- `price` is major units for display; `priceCents` is the authoritative integer
+  value used by carts, orders and payments.
 
 ## 5. Shipping availability and rates
 

@@ -53,6 +53,7 @@ async function seedProducts() {
 
   console.log("Clearing existing products…");
   await prisma.productVariant.deleteMany();
+  await prisma.productImage.deleteMany();
   await prisma.product.deleteMany();
 
   console.log(`Seeding ${productsData.length} products…`);
@@ -60,22 +61,43 @@ async function seedProducts() {
   for (const product of productsData) {
     const created = await prisma.product.create({
       data: {
+        slug: product.name
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, ""),
         name: product.name,
         description: product.description,
-        price: product.price,
-        images: JSON.stringify(product.images),
-        sizes: JSON.stringify(product.sizes),
+        priceCents: Math.round(product.price * 100),
+        status: "active",
+        images: {
+          create: product.images.map((url, position) => ({ url, position })),
+        },
       },
     });
 
     for (const variant of product.variants) {
-      await prisma.productVariant.create({
-        data: {
-          name: variant.name,
-          colors: JSON.stringify(variant.colors),
-          productId: created.id,
-        },
-      });
+      if (product.sizes.length) {
+        for (const size of product.sizes) {
+          await prisma.productVariant.create({
+            data: {
+              name: `${variant.name} / ${size}`,
+              color: variant.name,
+              size,
+              colors: JSON.stringify(variant.colors),
+              productId: created.id,
+            },
+          });
+        }
+      } else {
+        await prisma.productVariant.create({
+          data: {
+            name: variant.name,
+            color: variant.name,
+            colors: JSON.stringify(variant.colors),
+            productId: created.id,
+          },
+        });
+      }
     }
 
     console.log(`  ✓ ${product.name}`);

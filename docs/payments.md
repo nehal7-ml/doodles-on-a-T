@@ -1,6 +1,6 @@
 # Payments & email architecture
 
-Status: **decided** — 2026-10-28
+Status: **implemented** — 2026-11-11 (Stripe hosted Checkout, manual provider, webhook settlement, refunds, email adapters). Polar remains a future option for digital goods only.
 Audience: checkout, orders, admin, finance and auth work.
 Companion: [`docs/database.md`](database.md) (schema and money conventions).
 
@@ -271,8 +271,10 @@ Google is a first-class login method (in addition to email/password):
 - `AUTH_GOOGLE_ID` + `AUTH_GOOGLE_SECRET` enable the provider; if either is
   missing the provider is omitted and email/password still works.
 - `allowDangerousEmailAccountLinking` stays **false**. A user who registered
-  with a password must sign in first and explicitly link Google from
-  `/account/security` (planned) rather than being auto-linked by email.
+  with a password must sign in first and explicitly link Google later; no
+  endpoint for that exists yet. Until then, Google sign-in with an email that
+  already has a password account fails with “account not linked” instead of
+  merging the accounts.
 - Google users get `role = "customer"`; the adapter creates `User` +
   `Account` rows. `User.passwordHash` stays null for OAuth-only users.
 - The OAuth callback still creates a **database session**; no JWT is issued.

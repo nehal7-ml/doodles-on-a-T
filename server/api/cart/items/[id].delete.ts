@@ -5,6 +5,7 @@ import {
 } from "h3";
 import {
   emptyCartView,
+  getCartWithDetails,
   resolveCart,
   serializeCart,
 } from "../../../cart/service";
@@ -31,15 +32,13 @@ export default defineEventHandler(async (event) => {
   // Deleting an item that is already gone is a no-op so retries are safe.
   await prisma.cartItem.deleteMany({ where: { id: itemId, cartId: cart.id } });
 
-  const updated = await prisma.cart.findUniqueOrThrow({
-    where: { id: cart.id },
-    include: {
-      items: {
-        orderBy: { createdAt: "asc" },
-        include: { variant: { include: { product: true } } },
-      },
-    },
-  });
+  const updated = await getCartWithDetails(cart.id);
+  if (!updated) {
+    throw createError({
+      statusCode: 500,
+      statusMessage: "Cart could not be reloaded.",
+    });
+  }
 
   return await serializeCart(updated);
 });

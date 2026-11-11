@@ -1,6 +1,6 @@
 # Storefront data flow
 
-Status: **current implementation** — 2026-10-28
+Status: **current implementation** — 2026-11-11 (phase 5 cents + `ProductImage`, server cart)
 Audience: anyone changing the home page, catalog, product page, cart or the
 product API.
 
@@ -18,7 +18,7 @@ Printful Sync Product
 server/api/webhooks/printful.post.ts
         │  re-fetches the full product
         ▼
-server/utils/printful-sync.ts        → Product + ProductVariant rows
+server/utils/printful-sync.ts        → Product + ProductVariant + ProductImage rows
         ▼
 server/utils/products.ts             → Product / ApparelVariant / ProductOption
         ▼
@@ -29,9 +29,10 @@ app/pages/index.vue, explore.vue, products/[id].vue
 
 - The storefront **never calls Printful directly**. It only reads the local
   product tables through the API.
-- `Product.isActive = false` and `ProductVariant.isActive = false` rows are
+- `Product.status = "archived"` and `ProductVariant.isActive = false` rows are
   filtered out of both API endpoints. Deletions are soft so historical orders
-  keep their snapshots.
+  keep their snapshots. Only `status = "active"` products can be added to a
+  cart or ordered.
 - Webhooks are the normal update path. `POST /api/printful/sync` remains a
   manual repair tool. See `docs/printful.md`.
 
@@ -43,22 +44,27 @@ same object:
 | Field | Meaning |
 | --- | --- |
 | `id` | Local product id, used in `/products/{id}`. |
+| `slug` | Stable URL slug. `GET /api/products/{id}` also accepts the slug. |
+| `status` | `active` (only active products are returned), `draft`, `archived`. |
 | `printfulProductId` | Printful sync product id. |
 | `name`, `description` | Product copy. Description comes from the Printful catalog product. |
-| `price` | Lowest active variant price (or the product price when there are no variants). |
+| `price` | Lowest active variant price in **major units** (for display). |
+| `priceCents` | The same value in integer cents; use this for arithmetic. |
+| `compareAtPriceCents` | Optional strike-through/original price in cents. |
 | `currency` | Product currency. |
-| `images` | Ordered, de-duplicated image URLs: thumbnail first, then each variant preview. |
+| `images` | Ordered image URLs from the `ProductImage` relation. |
 | `thumbnailUrl` | Printful thumbnail, or the first image. |
 | `sizes` | Every active size across colours, sorted XS → 5XL. |
 | `variants` | One entry per **colour**, for swatches and colour selection. |
 | `options` | One entry per **purchasable colour + size combination**. |
 
 `variants` (colour groups) contain `name`, `colors` (hex swatches), `sizes`,
-lowest `price`, `currency`, a representative `image`, and `inStock`.
+lowest `price`/`priceCents`, `currency`, a representative `image`, and
+`inStock`.
 
 `options` (flat combinations) contain the local variant `id` that must be sent
-to `/api/orders` as `items[].variantId`, plus `size`, `color`, `price`,
-`currency`, `image`, `inStock` and `sku`.
+to `POST /api/cart/items` as `variantId`, plus `size`, `color`, `price`,
+`priceCents`, `compareAtPriceCents`, `currency`, `image`, `inStock` and `sku`.
 
 `GET /api/products` query parameters:
 
@@ -105,11 +111,30 @@ to `/api/orders` as `items[].variantId`, plus `size`, `color`, `price`,
   `product.images` → thumbnail. The carousel is keyed by colour so switching
   colours starts on that colour's artwork.
 - Price and currency come from the selected `option`, falling back to the
-  product. `formatPrice` falls back to USD if a currency code is invalid.
-- The add-to-cart button is disabled when the selected combination is out of
+  product. `formatPrice` takes major units; convert from `priceCents` when the
+  value comes from an order/cart response. It falls back to USD if a currency
+  code is invalid.
+- "Add to cart" sends `option.id` to `POST /api/cart/items` and updates the
+  shared cart state; it is disabled when the selected combination is out of
   stock.
 
-## 4. Assumptions
+## 4. Cart, checkout and the product API
+
+- `useCart()` is the only client entry point for cart data. It keeps a shared
+  `cart` ref, refreshes after every mutation and exposes `itemCount` for the
+  header badge.
+- `CartView.items[]` carries `unitPriceCents`, `lineTotalCents`, `currency` and
+  an `available` flag. Unavailable lines stay visible but are excluded from
+  `totals.subtotalCents` and block checkout.
+- `/checkout` posts the recipient + email to `POST /api/checkout`. The server
+  re-prices the cart, creates the order, snapshots `OrderAddress`, then asks the
+  payment provider for a hosted checkout URL. With `PAYMENT_PROVIDER=manual`
+  no redirect is returned; an admin settles the order with
+  `POST /api/orders/{id}/mark-paid`.
+- Order tracking is `POST /api/orders/track` with `orderNumber` + `email`.
+  Logged-in customers see their own orders at `GET /api/orders`.
+
+## 5. Assumptions
 
 - **The product tables are the storefront source of truth.** A webhook or sync
   must run before new Printful products appear.
@@ -119,23 +144,26 @@ to `/api/orders` as `items[].variantId`, plus `size`, `color`, `price`,
   (for example `white`), not a database id. Only `options[].id` is a real
   variant id.
 - **Images are Printful-hosted URLs.** They are not downloaded or resized; the
-  UI relies on `object-cover` and lazy loading. A future `ProductImage` table
-  (phase 5 in `docs/database.md`) would replace the JSON `images` column.
-- **Money is still `Float`.** `docs/database.md` proposes integer cents in
-  phase 5. Until that migration lands, storefront code keeps using the current
-  `price`/`currency` fields and `formatPrice`; do not introduce cents in the UI
-  ahead of the schema change.
+  UI relies on `object-cover` and lazy loading. They are stored in the
+  `ProductImage` relation and replaced wholesale on each Printful sync.
+- **Money is stored in integer cents.** The catalog/order APIs keep major-unit
+  `price`/`totals` for display and add `priceCents`/`totalsCents` for exact
+  arithmetic. Cart and checkout always use cents; never do floating-point math
+  on `price`.
 - **Sold-out means not purchasable.** A colour group is shown as sold out when
   none of its variants are in stock; a size is disabled when that exact
   colour + size is unavailable.
-- **The cart is still demo data.** `app/pages/cart.vue` reads
-  `app/testData/cartItems.json`; "Add to cart" on the product page only shows a
-  toast. Wiring the cart to `/api/orders` is a separate task.
+- **The cart is server-side.** `useCart()` talks to `GET /api/cart`,
+  `POST /api/cart/items`, `PATCH/DELETE /api/cart/items/{id}`. Guests get an
+  httpOnly `cart_token` cookie, which is merged into the user cart on login.
+  `app/pages/cart.vue` and `/checkout` render that cart; there is no demo cart
+  data. Prices are re-read from the variant on every response, so a stale
+  client price is never trusted.
 - **Unlisted stock variants are in stock.** The v1 `stock_updated` payload only
   lists out/discontinued catalog variants, so everything else is re-enabled
   for the affected product before the listed ids are marked unavailable.
 
-## 5. Verifying changes
+## 6. Verifying changes
 
 ```bash
 bun run typecheck
@@ -143,7 +171,10 @@ bun run build
 
 # With the dev server running:
 curl "http://localhost:3000/api/products?limit=3"
-curl http://localhost:3000/api/products/<local-id>
+curl http://localhost:3000/api/products/<local-id-or-slug>
+curl -c cookies.txt http://localhost:3000/api/cart
+curl -b cookies.txt -c cookies.txt -X POST http://localhost:3000/api/cart/items \
+  -H "content-type: application/json" -d '{"variantId":"<option-id>","quantity":1}'
 ```
 
 Check that:
@@ -152,4 +183,5 @@ Check that:
 2. The home page hero and grid show real names, images and prices.
 3. Colour switches change the gallery image.
 4. Sold-out colour + size combinations are disabled.
-5. Prices use the product currency.
+5. Prices are formatted from cents and use the product currency.
+6. Adding/updating/removing a cart line returns refreshed cents totals.

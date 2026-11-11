@@ -4,14 +4,14 @@ import { getPaymentProviderById } from "../../../payments";
 import { assertSameOrigin } from "../../../auth/csrf";
 import { getOrderDetails, serializeOrder } from "../../../utils/orders";
 import { prisma } from "../../../utils/prisma";
-import { requireAdmin } from "../../../utils/auth";
+import { requireAdminOrToken } from "../../../utils/auth";
 
 /**
  * Admin-only refund. Stripe refunds stay `pending` until the verified webhook
  * confirms them; manual refunds are settled locally (money moves out of band).
  */
 export default defineEventHandler(async (event) => {
-  const admin = await requireAdmin(event);
+  const admin = await requireAdminOrToken(event);
   assertSameOrigin(event);
 
   const id = getRouterParam(event, "id");
@@ -156,7 +156,7 @@ export default defineEventHandler(async (event) => {
 
     await tx.auditLog.create({
       data: {
-        actorId: admin.id,
+        actorId: admin?.id ?? null,
         action: "order.refund",
         entityType: "Order",
         entityId: order.id,
