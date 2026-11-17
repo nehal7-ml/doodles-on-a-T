@@ -76,7 +76,7 @@ useHead({ title: "doodles.on.a.T · Wearable art" });
 
           <NuxtLink
             v-if="hero"
-            :to="`/products/${hero.id}`"
+            :to="`/products/${hero.slug || hero.id}`"
             class="group flex flex-col items-center"
           >
             <div

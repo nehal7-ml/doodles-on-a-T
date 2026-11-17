@@ -10,6 +10,14 @@ export default defineNuxtConfig({
       htmlAttrs: {
         lang: "en",
       },
+      meta: [
+        {
+          name: "description",
+          content:
+            "Hand-drawn doodles printed on demand — t-shirts, hoodies and more from doodles.on.a.T.",
+        },
+        { property: "og:site_name", content: "doodles.on.a.T" },
+      ],
       link: [{ rel: "icon", type: "image/x-icon", href: "/logo.png" }],
     },
   },

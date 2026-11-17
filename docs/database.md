@@ -962,8 +962,10 @@ Phase 5 details (implemented in `20261110090000_phase5_cents_catalog`):
   `Product.images` and `Product.sizes` columns were dropped (sizes live on
   `ProductVariant.size`).
 - `Product.slug` was backfilled from a slugified `name` plus a short random
-  suffix, then made required and `@unique`. The Printful sync uses a
-  name-based dedupe slug.
+  suffix, then made required and `@unique`; the Printful sync uses a name-based
+  dedupe slug. `20261115000000_readable_product_slugs` then stripped the random
+  suffix so slugs are plain readable names (`classic-cotton-t-shirt`, and `-2`,
+  `-3`… only when two products share a name).
 - `Order.email` became required; existing rows were backfilled with `''` and
   are treated as guest orders.
 - `OrderAddress` was backfilled from `Order.recipient` JSON

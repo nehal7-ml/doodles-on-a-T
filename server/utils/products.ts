@@ -236,7 +236,7 @@ export async function listProducts(
   return products.map(toProduct);
 }
 
-export async function getProductById(
+export async function getProductByIdOrSlug(
   idOrSlug: string,
 ): Promise<Product | undefined> {
   const product = await prisma.product.findFirst({

@@ -5,16 +5,33 @@ const route = useRoute();
 const toast = useToast();
 
 const { data: product, error, status, refresh } = await useFetch<Product>(
-  () => `/api/products/${route.params.id}`,
-  { key: `product-${route.params.id}` },
+  () => `/api/products/${route.params.slug}`,
+  { key: `product-${route.params.slug}` },
 );
+
+// Old links (and the cuid form of the URL) stay valid: redirect them to the
+// canonical slug so search engines only index one URL per product.
+if (
+  product.value &&
+  product.value.slug &&
+  route.params.slug !== product.value.slug
+) {
+  await navigateTo(`/products/${product.value.slug}`, {
+    redirectCode: 301,
+    replace: true,
+  });
+}
+
+// A product that does not exist must be a real 404 (not a soft 200) so search
+// engines do not index empty pages.
+if (error.value?.statusCode === 404) setResponseStatus(404);
 
 const selectedVariantId = ref<string | null>(null);
 const selectedSize = ref<string | null>(null);
 const quantity = ref(1);
 
 watch(
-  () => route.params.id,
+  () => route.params.slug,
   () => {
     selectedVariantId.value = null;
     selectedSize.value = null;
@@ -178,11 +195,53 @@ watch(selectedVariantId, () => {
   }
 });
 
-useHead(() => ({
-  title: product.value
-    ? `${product.value.name} · doodles.on.a.T`
-    : "Product · doodles.on.a.T",
-}));
+const requestUrl = useRequestURL();
+
+function seoDescription(value: Product | null | undefined): string | undefined {
+  if (!value) return undefined;
+  const text = (
+    value.description ||
+    `${value.name} — printed on demand at doodles.on.a.T.`
+  )
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!text) return undefined;
+  return text.length > 160 ? `${text.slice(0, 157).trimEnd()}…` : text;
+}
+
+useHead(() => {
+  const value = product.value;
+  const title = value
+    ? `${value.name} · doodles.on.a.T`
+    : "Product · doodles.on.a.T";
+  const description = seoDescription(value);
+  const canonical = value?.slug
+    ? new URL(`/products/${value.slug}`, requestUrl.origin).href
+    : requestUrl.href;
+  const image = value?.thumbnailUrl || value?.images?.[0];
+
+  // unhead types meta entries as a union: each element must carry either a
+  // required `name` or a required `property`, so keep the array a union too.
+  const meta: ({ name: string; content: string } | { property: string; content: string })[] = [
+    { property: "og:title", content: title },
+    { property: "og:type", content: "product" },
+    { property: "og:url", content: canonical },
+    { name: "twitter:card", content: image ? "summary_large_image" : "summary" },
+  ];
+  if (description) {
+    meta.push(
+      { name: "description", content: description },
+      { property: "og:description", content: description },
+    );
+  }
+  if (image) meta.push({ property: "og:image", content: image });
+
+  return {
+    title,
+    link: [{ rel: "canonical", href: canonical }],
+    meta,
+  };
+});
 </script>
 
 <template>

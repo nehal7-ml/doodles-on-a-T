@@ -32,7 +32,7 @@ const inStock = computed(
 
 <template>
   <NuxtLink
-    :to="`/products/${product.id}`"
+    :to="`/products/${product.slug || product.id}`"
     class="group flex flex-col border-2 border-stone-900 dark:border-zinc-200 rounded-lg p-3 bg-white dark:bg-zinc-950 transition-all hover:-translate-y-1 hover:shadow-[4px_4px_0px_0px_rgba(28,25,23,1)] dark:hover:shadow-[4px_4px_0px_0px_rgba(250,250,250,1)]"
   >
     <div

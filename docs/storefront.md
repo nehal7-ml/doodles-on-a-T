@@ -1,6 +1,6 @@
 # Storefront data flow
 
-Status: **current implementation** — 2026-11-11 (phase 5 cents + `ProductImage`, server cart)
+Status: **current implementation** — 2026-11-16 (phase 5 cents + `ProductImage`, server cart, slug product URLs)
 Audience: anyone changing the home page, catalog, product page, cart or the
 product API.
 
@@ -22,9 +22,9 @@ server/utils/printful-sync.ts        → Product + ProductVariant + ProductImage
         ▼
 server/utils/products.ts             → Product / ApparelVariant / ProductOption
         ▼
-GET /api/products, GET /api/products/{id}
+GET /api/products, GET /api/products/{slug}
         ▼
-app/pages/index.vue, explore.vue, products/[id].vue
+app/pages/index.vue, explore.vue, products/[slug].vue
 ```
 
 - The storefront **never calls Printful directly**. It only reads the local
@@ -38,13 +38,13 @@ app/pages/index.vue, explore.vue, products/[id].vue
 
 ## 2. API shapes
 
-`GET /api/products` (list) and `GET /api/products/{id}` (detail) return the
+`GET /api/products` (list) and `GET /api/products/{slug}` (detail) return the
 same object:
 
 | Field | Meaning |
 | --- | --- |
-| `id` | Local product id, used in `/products/{id}`. |
-| `slug` | Stable URL slug. `GET /api/products/{id}` also accepts the slug. |
+| `id` | Local product id (cuid). Not used in storefront URLs. |
+| `slug` | Readable URL slug, used in `/products/{slug}`. The detail endpoint accepts the slug **or** the id. |
 | `status` | `active` (only active products are returned), `draft`, `archived`. |
 | `printfulProductId` | Printful sync product id. |
 | `name`, `description` | Product copy. Description comes from the Printful catalog product. |
@@ -100,8 +100,13 @@ to `POST /api/cart/items` as `variantId`, plus `size`, `color`, `price`,
 - Sizes: first four sizes, with `+N` when there are more.
 - Sold-out badge when no option and no colour group is in stock.
 
-### Product detail (`app/pages/products/[id].vue`)
+### Product detail (`app/pages/products/[slug].vue`)
 
+- The URL is the product **slug** (`/products/short-sleeve-unisex-t-shirt`).
+  Old id-based links are fetched by id and then **301-redirected** to the
+  canonical slug, so only one URL per product is indexed. The page emits a
+  canonical `<link>`, `description`, Open Graph (`og:title`, `og:description`,
+  `og:type=product`, `og:url`, `og:image`) and Twitter card tags.
 - Colour buttons come from `variants`; the first in-stock colour is selected
   initially.
 - Size buttons come from the selected colour's `sizes`. A size is **disabled
@@ -172,6 +177,8 @@ bun run build
 # With the dev server running:
 curl "http://localhost:3000/api/products?limit=3"
 curl http://localhost:3000/api/products/<local-id-or-slug>
+curl -sI http://localhost:3000/products/<local-id>   # 301 -> /products/<slug>
+curl -s http://localhost:3000/products/<slug> | grep -o 'rel="canonical" [^>]*'
 curl -c cookies.txt http://localhost:3000/api/cart
 curl -b cookies.txt -c cookies.txt -X POST http://localhost:3000/api/cart/items \
   -H "content-type: application/json" -d '{"variantId":"<option-id>","quantity":1}'
@@ -185,3 +192,5 @@ Check that:
 4. Sold-out colour + size combinations are disabled.
 5. Prices are formatted from cents and use the product currency.
 6. Adding/updating/removing a cart line returns refreshed cents totals.
+7. Card links are `/products/<slug>`, an id URL answers `301` with the slug
+   `Location`, and the product page emits canonical + Open Graph tags.

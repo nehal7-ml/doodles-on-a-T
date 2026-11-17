@@ -216,7 +216,7 @@ delivered date) are applied on top.
 
 ## 4. Storefront product API
 
-`GET /api/products` and `GET /api/products/{id}` return active products only,
+`GET /api/products` and `GET /api/products/{slug}` return active products only,
 with the shape below. `GET /api/products` accepts `q`, `sort` (`featured`,
 `price-asc`, `price-desc`, `name`) and `limit` (max 100).
 
