@@ -2,6 +2,7 @@
 import type { Product } from "~/types";
 
 const route = useRoute();
+const router = useRouter();
 const toast = useToast();
 
 const { data: product, error, status, refresh } = await useFetch<Product>(
@@ -29,6 +30,34 @@ if (error.value?.statusCode === 404) setResponseStatus(404);
 const selectedVariantId = ref<string | null>(null);
 const selectedSize = ref<string | null>(null);
 const quantity = ref(1);
+
+/**
+ * Deep links from the cart carry `?variant=<optionId>` so the exact colour +
+ * size that is already in the cart comes back preselected — the shopper lands
+ * ready to pick a *different* variant instead of re-finding it.
+ */
+function applyVariantQuery(value: Product | null | undefined): void {
+  const wanted = route.query.variant;
+  const optionId = Array.isArray(wanted) ? wanted[0] : wanted;
+  if (!value || !optionId) return;
+
+  const option = value.options.find((candidate) => candidate.id === optionId);
+  if (!option) return;
+
+  const group = value.variants.find(
+    (variant) => variant.name === (option.color ?? option.name),
+  );
+  if (group) selectedVariantId.value = group.id;
+  if (option.size) selectedSize.value = option.size;
+
+  // One-shot: drop the parameter so a reload does not silently re-select an
+  // option the shopper has since changed (and so the URL stays shareable).
+  if (import.meta.client) {
+    const query = { ...route.query };
+    delete query.variant;
+    void router.replace({ query });
+  }
+}
 
 watch(
   () => route.params.slug,
@@ -86,8 +115,56 @@ const selectedOption = computed(() => {
   );
 });
 
-const { addItem } = useCart();
+const { addItem, cart, ensureLoaded } = useCart();
 const adding = ref(false);
+
+// The header loads the cart, but this page can be the first thing rendered
+// (direct link from a cart line), so make sure the "in cart" state is there.
+onMounted(() => {
+  ensureLoaded().catch(() => {});
+});
+
+/** Lines of *this* product already in the cart, newest state from the server. */
+const inCart = computed(() => {
+  const slug = product.value?.slug;
+  if (!slug) return [];
+  return cart.value.items.filter((item) => item.productSlug === slug);
+});
+
+/** Quantity per exact colour + size option, for the size-button badges. */
+const inCartByVariant = computed(() => {
+  const totals = new Map<string, number>();
+  for (const item of inCart.value) {
+    totals.set(item.variantId, (totals.get(item.variantId) ?? 0) + item.quantity);
+  }
+  return totals;
+});
+
+/** Quantity inside one colour group, for the colour-button badges. */
+function inCartForColor(groupName: string): number {
+  return (product.value?.options ?? []).reduce((total, option) => {
+    if ((option.color ?? option.name) !== groupName) return total;
+    return total + (inCartByVariant.value.get(option.id) ?? 0);
+  }, 0);
+}
+
+/** Quantity for a size inside the currently selected colour group. */
+function inCartForSize(size: string): number {
+  const groupName = selectedVariant.value?.name;
+  if (!groupName) return 0;
+  const option = (product.value?.options ?? []).find(
+    (candidate) =>
+      (candidate.color ?? candidate.name) === groupName &&
+      candidate.size === size,
+  );
+  return option ? (inCartByVariant.value.get(option.id) ?? 0) : 0;
+}
+
+/** Quantity of the exact colour + size currently selected. */
+const inCartForSelectedOption = computed(() => {
+  const optionId = selectedOption.value?.id;
+  return optionId ? (inCartByVariant.value.get(optionId) ?? 0) : 0;
+});
 
 async function addToCart() {
   if (!product.value || !selectedOption.value) return;
@@ -106,6 +183,12 @@ async function addToCart() {
       description: `${product.value.name}${details ? ` · ${details}` : ""}`,
       icon: "i-heroicons-check-circle",
       color: "primary",
+      actions: [
+        {
+          label: "View cart",
+          onClick: () => navigateTo("/cart"),
+        },
+      ],
     });
   } catch (error) {
     toast.add({
@@ -153,7 +236,8 @@ const galleryAlt = computed(() => {
 const isLoading = computed(() => status.value === "pending");
 const notFound = computed(() => error.value?.statusCode === 404);
 
-// Pick the first colour/size that is actually purchasable.
+// Pick the first colour/size that is actually purchasable, then let a
+// `?variant=` deep link (from the cart) override it with the exact option.
 watch(
   () => product.value,
   (value) => {
@@ -174,8 +258,17 @@ watch(
       selectedSize.value =
         sizes.find((size) => isSizeAvailable(size)) ?? sizes[0] ?? null;
     }
+
+    applyVariantQuery(value);
   },
   { immediate: true },
+);
+
+// Same product, different cart line: the slug does not change, so the query
+// alone has to re-apply the selection.
+watch(
+  () => route.query.variant,
+  () => applyVariantQuery(product.value),
 );
 
 watch(selectedVariantId, () => {
@@ -299,7 +392,7 @@ useHead(() => {
             :src="item"
             :alt="galleryAlt"
             class="aspect-square w-full object-cover"
-          />
+          >
         </UCarousel>
 
         <div
@@ -364,6 +457,13 @@ useHead(() => {
               <span :class="variant.inStock ? '' : 'line-through opacity-60'">
                 {{ variant.name }}
               </span>
+              <span
+                v-if="inCartForColor(variant.name) > 0"
+                class="min-w-5 h-5 px-1 rounded-full bg-emerald-600 dark:bg-emerald-500 text-white text-xs font-bold flex items-center justify-center"
+                :title="`${inCartForColor(variant.name)} in your cart`"
+              >
+                {{ inCartForColor(variant.name) }}
+              </span>
             </button>
           </div>
         </div>
@@ -376,7 +476,7 @@ useHead(() => {
               :key="size"
               type="button"
               :disabled="!isSizeAvailable(size)"
-              class="min-w-11 rounded-md border-2 px-3 py-2 text-sm font-bold transition-colors disabled:cursor-not-allowed"
+              class="min-w-11 inline-flex items-center justify-center gap-1.5 rounded-md border-2 px-3 py-2 text-sm font-bold transition-colors disabled:cursor-not-allowed"
               :class="
                 size === selectedSize
                   ? 'border-stone-900 dark:border-zinc-100 bg-stone-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
@@ -392,6 +492,13 @@ useHead(() => {
               @click="selectedSize = size"
             >
               {{ size }}
+              <span
+                v-if="inCartForSize(size) > 0"
+                class="min-w-5 h-5 px-1 rounded-full bg-emerald-600 dark:bg-emerald-500 text-white text-xs font-bold flex items-center justify-center"
+                :title="`${inCartForSize(size)} in your cart`"
+              >
+                {{ inCartForSize(size) }}
+              </span>
             </button>
           </div>
         </div>
@@ -436,6 +543,25 @@ useHead(() => {
             }}
           </UButton>
         </div>
+
+        <p
+          v-if="inCartForSelectedOption > 0"
+          class="flex flex-wrap items-center gap-2 text-sm font-medium text-emerald-700 dark:text-emerald-400"
+        >
+          <UIcon name="i-heroicons-check-circle" class="w-4 h-4 shrink-0" />
+          <span>
+            {{ inCartForSelectedOption }} × this variant already in your cart.
+          </span>
+          <span class="text-stone-500 dark:text-zinc-400">
+            Pick another colour or size to add it as a separate line.
+          </span>
+          <NuxtLink
+            to="/cart"
+            class="font-bold underline underline-offset-4 decoration-wavy hover:text-emerald-800 dark:hover:text-emerald-300"
+          >
+            View cart
+          </NuxtLink>
+        </p>
 
         <div class="space-y-2 border-t-2 border-dashed border-stone-300 dark:border-zinc-700 pt-4 text-sm text-stone-500 dark:text-zinc-400">
           <p class="flex items-center gap-2">

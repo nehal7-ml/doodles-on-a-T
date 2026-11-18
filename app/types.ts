@@ -11,6 +11,8 @@ export type CartViewItem = {
   id: string;
   variantId: string;
   productId: string;
+  /** Canonical slug so cart lines can link back to their product page. */
+  productSlug: string;
   productName: string;
   variantName: string;
   size: string | null;

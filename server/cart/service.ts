@@ -35,6 +35,8 @@ export type CartViewItem = {
   id: string;
   variantId: string;
   productId: string;
+  /** Canonical slug so the client can link the line back to its product page. */
+  productSlug: string;
   productName: string;
   variantName: string;
   size: string | null;
@@ -172,6 +174,7 @@ export async function serializeCart(
       id: item.id,
       variantId: item.variantId,
       productId: item.variant.productId,
+      productSlug: item.variant.product.slug,
       productName: item.variant.product.name,
       variantName: item.variant.color ?? item.variant.name,
       size: item.variant.size,
