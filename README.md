@@ -156,6 +156,11 @@ registration; use a tunnel during local development.
 5. Build with `bun run build` and run the Nuxt output with your host's Node/Bun
    runtime. Configure the Stripe webhook to
    `{PUBLIC_SITE_URL}/api/payments/webhook/stripe`.
+6. **Web Analytics (Vercel).** `@vercel/analytics` is registered as a Nuxt
+   module in `nuxt.config.ts`, so the pageview script ships automatically and
+   only runs in production builds (no-op in `nuxt dev`). On Vercel, open
+   Project → **Analytics** → **Enable** once; data then appears in that
+   dashboard. No env vars are needed.
 
 ## Further documentation
 
