@@ -880,7 +880,7 @@ export async function getSessionUser(event: H3Event) {
 | Password hash | Argon2id, OWASP baseline (19 MiB, t=2, p=1) |
 | Password reset | 32-byte token, only SHA-256 stored, 1h expiry, single use |
 | Login rate limit | 5 attempts / 15 min per IP+email; generic error message |
-| CSRF | Auth.js built-in for its routes; custom cookie-authenticated POST/PATCH/DELETE also check `Origin`/`Sec-Fetch-Site` |
+| CSRF | Auth.js built-in for its routes; custom cookie-authenticated POST/PATCH/DELETE also check `Origin`/`Sec-Fetch-Site` against the origin of `AUTH_URL` — so `AUTH_URL` must be the public origin users actually browse (e.g. the custom domain, not the platform's `.vercel.app` alias), otherwise those requests are rejected `403 Cross-site request rejected.` |
 | Session invalidation | password change, role change, `isActive=false`, manual "logout everywhere" |
 | Audit | admin mutations write `AuditLog` (actor, before, after, ip, ua) |
 | PII | never log emails/phones/addresses; anonymise on GDPR delete (`email = deleted+<id>@invalid`, clear names/phones/addresses) |
