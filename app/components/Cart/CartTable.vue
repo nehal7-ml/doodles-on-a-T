@@ -18,9 +18,13 @@ function itemLabel(item: CartViewItem): string {
 /**
  * A line links back to its product page with the exact colour/size that is in
  * the cart already selected, so "buy another variant" is two clicks away.
+ * The params are the same readable `?color=`/`?size=` form the product page
+ * writes, so the resulting URL can also be copied and shared.
  */
 function productHref(item: CartViewItem): string {
-  return `/products/${item.productSlug}?variant=${encodeURIComponent(item.variantId)}`;
+  const params = new URLSearchParams({ color: item.colorSlug });
+  if (item.size) params.set("size", item.size);
+  return `/products/${item.productSlug}?${params.toString()}`;
 }
 </script>
 

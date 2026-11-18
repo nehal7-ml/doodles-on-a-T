@@ -31,32 +31,89 @@ const selectedVariantId = ref<string | null>(null);
 const selectedSize = ref<string | null>(null);
 const quantity = ref(1);
 
+/** First value of a (possibly repeated) query parameter, or `null`. */
+function queryParam(value: unknown): string | null {
+  const first = Array.isArray(value) ? value[0] : value;
+  return typeof first === "string" && first !== "" ? first : null;
+}
+
 /**
- * Deep links from the cart carry `?variant=<optionId>` so the exact colour +
- * size that is already in the cart comes back preselected — the shopper lands
- * ready to pick a *different* variant instead of re-finding it.
+ * Shareable deep links are `?color=<colour-group-slug>&size=<M>` — readable
+ * values a shopper can read, copy and re-send. `color` matches
+ * `variants[].id` (the slugified colour name), `size` is matched
+ * case-insensitively inside the chosen colour. Older cart links carrying an
+ * opaque `?variant=<optionId>` still work: they resolve to a colour + size
+ * and are then normalised to the readable form.
  */
 function applyVariantQuery(value: Product | null | undefined): void {
-  const wanted = route.query.variant;
-  const optionId = Array.isArray(wanted) ? wanted[0] : wanted;
-  if (!value || !optionId) return;
+  if (!value) return;
 
-  const option = value.options.find((candidate) => candidate.id === optionId);
-  if (!option) return;
-
-  const group = value.variants.find(
-    (variant) => variant.name === (option.color ?? option.name),
-  );
-  if (group) selectedVariantId.value = group.id;
-  if (option.size) selectedSize.value = option.size;
-
-  // One-shot: drop the parameter so a reload does not silently re-select an
-  // option the shopper has since changed (and so the URL stays shareable).
-  if (import.meta.client) {
-    const query = { ...route.query };
-    delete query.variant;
-    void router.replace({ query });
+  // Legacy one-shot: an exact option id from an older cart link.
+  const optionId = queryParam(route.query.variant);
+  if (optionId) {
+    const option = value.options.find((candidate) => candidate.id === optionId);
+    if (option) {
+      const group = value.variants.find(
+        (variant) => variant.name === (option.color ?? option.name),
+      );
+      if (group) selectedVariantId.value = group.id;
+      if (option.size) selectedSize.value = option.size;
+    }
   }
+
+  const color = queryParam(route.query.color);
+  if (color) {
+    const wanted = color.trim().toLowerCase().replace(/\s+/g, "-");
+    const group = value.variants.find((variant) => variant.id === wanted);
+    if (group) selectedVariantId.value = group.id;
+  }
+
+  const size = queryParam(route.query.size);
+  if (size) {
+    const group = value.variants.find(
+      (variant) => variant.id === selectedVariantId.value,
+    );
+    const sizes = group?.sizes.length ? group.sizes : value.sizes;
+    const match = sizes.find(
+      (candidate) => candidate.toLowerCase() === size.trim().toLowerCase(),
+    );
+    if (match) selectedSize.value = match;
+  }
+
+  syncSelectionToQuery();
+}
+
+/**
+ * Keep the address bar shareable: the current selection is written back as
+ * `?color=…&size=…` so any combination can be copied out of the URL. Runs on
+ * the client only, uses `replace` (no history spam), preserves unrelated
+ * parameters and drops the one-shot legacy `variant`.
+ */
+function syncSelectionToQuery(): void {
+  if (!import.meta.client || !product.value) return;
+
+  const next = { ...route.query };
+  delete next.variant;
+
+  const group = product.value.variants.find(
+    (variant) => variant.id === selectedVariantId.value,
+  );
+  if (group) next.color = group.id;
+  else delete next.color;
+  if (selectedSize.value) next.size = selectedSize.value;
+  else delete next.size;
+
+  // Nothing to do: the URL already describes this selection (and carries no
+  // legacy parameter) — also what stops the write-back from looping.
+  if (
+    !queryParam(route.query.variant) &&
+    queryParam(route.query.color) === queryParam(next.color) &&
+    queryParam(route.query.size) === queryParam(next.size)
+  ) {
+    return;
+  }
+
+  void router.replace({ query: next });
 }
 
 watch(
@@ -237,7 +294,8 @@ const isLoading = computed(() => status.value === "pending");
 const notFound = computed(() => error.value?.statusCode === 404);
 
 // Pick the first colour/size that is actually purchasable, then let a
-// `?variant=` deep link (from the cart) override it with the exact option.
+// `?color=`/`?size=` (or legacy `?variant=`) deep link override it with the
+// exact combination.
 watch(
   () => product.value,
   (value) => {
@@ -264,10 +322,14 @@ watch(
   { immediate: true },
 );
 
-// Same product, different cart line: the slug does not change, so the query
-// alone has to re-apply the selection.
+// Same product, different cart line (or a shared link opened on this page):
+// the slug does not change, so the query alone has to re-apply the
+// selection. Joined by value, so the write-back below cannot loop.
 watch(
-  () => route.query.variant,
+  () =>
+    [route.query.variant, route.query.color, route.query.size]
+      .map((value) => queryParam(value) ?? "")
+      .join("|"),
   () => applyVariantQuery(product.value),
 );
 
@@ -287,6 +349,10 @@ watch(selectedVariantId, () => {
       sizes.find((size) => isSizeAvailable(size)) ?? sizes[0] ?? null;
   }
 });
+
+// Runs after the size normalizer above, so a colour change is written to the
+// address bar as a single, already-valid `?color=…&size=…` pair.
+watch([selectedVariantId, selectedSize], () => syncSelectionToQuery());
 
 const requestUrl = useRequestURL();
 

@@ -147,7 +147,9 @@ to `POST /api/cart/items` as `variantId`, plus `size`, `color`, `price`,
   Checkout rejects mixed-currency carts with `409`.
 - **Colour identity is the slugified colour name.** `variants[].id` is a slug
   (for example `white`), not a database id. Only `options[].id` is a real
-  variant id.
+  variant id. The same slug is the shareable `?color=` product URL parameter
+  and the cart line's `colorSlug` — all three come from
+  `colorGroupKey()` in `server/utils/products.ts`.
 - **Images are Printful-hosted URLs.** They are not downloaded or resized; the
   UI relies on `object-cover` and lazy loading. They are stored in the
   `ProductImage` relation and replaced wholesale on each Printful sync.
@@ -164,16 +166,28 @@ to `POST /api/cart/items` as `variantId`, plus `size`, `color`, `price`,
   `app/pages/cart.vue` and `/checkout` render that cart; there is no demo cart
   data. Prices are re-read from the variant on every response, so a stale
   client price is never trusted.
+- **Shareable variant URLs.** The product page mirrors the selection into the
+  query string as `?color=<colour-group-slug>&size=<M>` (`color` equals the
+  API's `variants[].id`, e.g. `white`; `size` matches case-insensitively), so
+  any colour/size combination can be copied from the address bar and shared.
+  The write-back is client-only, uses `router.replace` (no history entries),
+  keeps unrelated parameters and is value-compared so it cannot loop. Older
+  links carrying `?variant=<optionId>` still work: they are resolved to a
+  colour + size, then normalised to the readable form (the opaque parameter
+  is dropped). Cart lines link with the readable form — each serialized line
+  carries `colorSlug` and `CartTable` builds
+  `/products/{slug}?color={colorSlug}&size={size}`.
 - **One line per variant, not per product.** The unique key is
   `(cartId, variantId)`, so adding the same product in two colours/sizes
   creates two labelled lines, while adding the same variant twice bumps the
   quantity of the existing line (capped at 99). Each serialized line carries
-  `productSlug`, and `CartTable` links the image and name to
-  `/products/{slug}?variant={optionId}` — the product page reads that query
-  parameter and preselects the exact colour + size, so a shopper can jump back
-  from the cart and immediately pick a *different* variant. The product page
-  also shows green "in cart" badges on the colour/size buttons and a note
-  under **Add to cart** when the selected variant is already in the cart.
+  `productSlug` + `colorSlug`, and `CartTable` links the image and name to
+  `/products/{slug}?color={colorSlug}&size={size}` — the product page reads
+  the query parameters and preselects the exact colour + size, so a shopper
+  can jump back from the cart and immediately pick a *different* variant.
+  The product page also shows green "in cart" badges on the colour/size
+  buttons and a note under **Add to cart** when the selected variant is
+  already in the cart.
 - **Unlisted stock variants are in stock.** The v1 `stock_updated` payload only
   lists out/discontinued catalog variants, so everything else is re-enabled
   for the affected product before the listed ids are marked unavailable.
@@ -206,5 +220,8 @@ Check that:
    `Location`, and the product page emits canonical + Open Graph tags.
 8. Adding one product in two different variants produces two labelled cart
    lines, adding the same variant again bumps its quantity, and each cart line
-   links to `/products/<slug>?variant=<optionId>` which opens the product page
-   with that colour + size already selected.
+   links to `/products/<slug>?color=<group>&size=<size>` which opens the
+   product page with that colour + size already selected; changing the colour
+   or size on the page updates the same query parameters in the address bar
+   so the URL can be copied and shared, and a legacy `?variant=<optionId>`
+   link still preselects (then normalises to the readable form).

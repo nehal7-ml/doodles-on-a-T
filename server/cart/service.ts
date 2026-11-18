@@ -15,6 +15,7 @@ import type {
 } from "../generated/prisma/client";
 import { usesSecureCookies } from "../auth/session";
 import { prisma } from "../utils/prisma";
+import { colorGroupKey } from "../utils/products";
 
 export const CART_COOKIE = "cart_token";
 export const CART_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
@@ -37,6 +38,11 @@ export type CartViewItem = {
   productId: string;
   /** Canonical slug so the client can link the line back to its product page. */
   productSlug: string;
+  /**
+   * Shareable `?color=` value for this line (slugified colour name, the same
+   * key as `variants[].id` in the catalog API).
+   */
+  colorSlug: string;
   productName: string;
   variantName: string;
   size: string | null;
@@ -175,6 +181,7 @@ export async function serializeCart(
       variantId: item.variantId,
       productId: item.variant.productId,
       productSlug: item.variant.product.slug,
+      colorSlug: colorGroupKey(item.variant),
       productName: item.variant.product.name,
       variantName: item.variant.color ?? item.variant.name,
       size: item.variant.size,

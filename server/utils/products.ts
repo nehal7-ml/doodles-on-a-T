@@ -72,6 +72,18 @@ function slugify(value: string): string {
   );
 }
 
+/**
+ * Colour identity: the slugified colour name. This is simultaneously
+ * `variants[].id` in the catalog API, the group key built by `toProduct()`
+ * and the `?color=` value in shareable product URLs — one implementation so
+ * the three can never drift apart.
+ */
+export function colorGroupKey(
+  variant: Pick<DbProductVariant, "color" | "name">,
+): string {
+  return slugify(variant.color ?? variant.name ?? "Default");
+}
+
 /** Cents are the storage unit; the public catalog API keeps major units. */
 export function toMajorUnits(cents: number | null | undefined): number {
   return typeof cents === "number" && Number.isFinite(cents) ? cents / 100 : 0;
@@ -124,8 +136,10 @@ function toProduct(product: ProductWithVariants): Product {
   >();
 
   for (const variant of activeVariants) {
+    // Display name of the colour group; `colorGroupKey()` slugifies this very
+    // expression, so the label and `variants[].id` describe the same group.
     const name = variant.color ?? variant.name ?? "Default";
-    const key = slugify(name);
+    const key = colorGroupKey(variant);
     const group = groups.get(key) ?? {
       name,
       colors: [],

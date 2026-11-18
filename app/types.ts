@@ -13,6 +13,8 @@ export type CartViewItem = {
   productId: string;
   /** Canonical slug so cart lines can link back to their product page. */
   productSlug: string;
+  /** Shareable `?color=` value (slugified colour name). */
+  colorSlug: string;
   productName: string;
   variantName: string;
   size: string | null;
