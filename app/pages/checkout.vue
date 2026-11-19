@@ -105,8 +105,8 @@ onMounted(async () => {
       }));
     }
   } catch {
-    // Keep the US fallback; quoting will return a useful error if Printful is
-    // unreachable.
+    // Keep the US fallback; the rate quote validates the destination
+    // server-side.
   } finally {
     countriesLoading.value = false;
   }

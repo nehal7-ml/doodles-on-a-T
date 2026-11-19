@@ -16,7 +16,7 @@ export function safeCompare(a: string, b: string): boolean {
 }
 
 /**
- * Protects machine-to-machine endpoints (Printful sync/webhooks, CLI tools).
+ * Protects machine-to-machine endpoints (CLI tools, automation).
  *
  * Humans use Auth.js sessions and roles instead. Set ADMIN_TOKEN in production
  * and send it as `x-admin-token` or as a Bearer token.
@@ -56,7 +56,8 @@ export function requireAdminToken(
   }
 }
 
-/** Public base URL of this app, used when registering Printful webhooks. */
+/** Public base URL of this app, used to build absolute links (payment
+ * redirects, callback URLs). */
 export function getRequestOrigin(event: H3Event): string {
   const configured =
     readEnv("PUBLIC_SITE_URL") ?? readEnv("NUXT_PUBLIC_SITE_URL");

@@ -68,9 +68,9 @@
           </li>
           <li>
             <a
-              href="#"
+              href="/track"
               class="hover:underline underline-offset-4 decoration-dotted"
-              >Printful Tracking</a
+              >Track Order</a
             >
           </li>
           <li>
@@ -114,7 +114,7 @@
     <div
       class="max-w-6xl mx-auto px-4 pb-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs font-mono text-stone-400 dark:text-zinc-500"
     >
-      <div>© 2026 doodle.wear. Built with Nuxt & Printful.</div>
+      <div>© 2026 doodle.wear. Built with Nuxt.</div>
       <div class="italic">Handle with creative care.</div>
     </div>
   </footer>

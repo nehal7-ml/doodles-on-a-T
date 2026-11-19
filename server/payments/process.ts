@@ -1,6 +1,6 @@
 import { orderConfirmationEmail } from "../email/templates";
 import { sendEmail } from "../email";
-import { addOrderEvent, submitOrderToPrintful } from "../utils/orders";
+import { addOrderEvent } from "../utils/orders";
 import { prisma } from "../utils/prisma";
 import type { NormalizedEvent, PaymentProviderId } from "./types";
 
@@ -189,21 +189,10 @@ async function markSucceeded(
   }
 
   // Everything below is deliberately outside the money transaction: a failed
-  // email or Printful call must never roll back a captured payment.
-  let error: string | undefined;
-
+  // email must never roll back a captured payment.
   await sendOrderConfirmation(existing.orderId);
 
-  try {
-    await submitOrderToPrintful(existing.orderId);
-  } catch (submitError) {
-    error =
-      submitError instanceof Error
-        ? submitError.message
-        : "Could not submit the order to Printful.";
-  }
-
-  return { status: "processed", orderId: existing.orderId, error };
+  return { status: "processed", orderId: existing.orderId };
 }
 
 async function markFailed(

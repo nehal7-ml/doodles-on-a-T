@@ -177,7 +177,8 @@ useHead({ title: "doodles.on.a.T · Wearable art" });
         />
         <h2 class="text-xl font-bold">The sketchbook is empty</h2>
         <p class="text-stone-500 dark:text-zinc-400">
-          New doodles will appear here as soon as they are synced from Printful.
+          New doodles will appear here as soon as they are added to the
+          catalogue.
         </p>
       </div>
 

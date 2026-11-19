@@ -7,7 +7,7 @@ export default defineEventHandler(async (event) => {
   const includeStates =
     query.includeStates === "true" || query.states === "true";
 
-  const countries = (await listCountries())
+  const countries = listCountries()
     .filter((country) => !region || country.region?.toLowerCase() === region)
     .map((country) => ({
       code: country.code,

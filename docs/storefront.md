@@ -1,24 +1,21 @@
 # Storefront data flow
 
-Status: **current implementation** — 2026-11-16 (phase 5 cents + `ProductImage`, server cart, slug product URLs)
+Status: **current implementation** — 2026-11-20 (Printful removed: static demo catalogue + local demo shipping), previously 2026-11-16 (phase 5 cents + `ProductImage`, server cart, slug product URLs)
 Audience: anyone changing the home page, catalog, product page, cart or the
 product API.
 
-This document describes how Printful products reach the storefront. The
-database schema itself is documented in `docs/database.md`; where the two
-documents disagree, `docs/database.md` wins for schema and this file wins for
-storefront behaviour.
+This document describes how the demo catalogue reaches the storefront and how
+checkout quotes shipping. The database schema itself is documented in
+`docs/database.md`; where the two documents disagree, `docs/database.md` wins
+for schema and this file wins for storefront behaviour.
 
 ## 1. Pipeline
 
 ```
-Printful Sync Product
-        │  (v1 webhook, or manual sync)
+app/testData/products.json  (bun run db:seed with SEED_PRODUCTS=true)
+        │
         ▼
-server/api/webhooks/printful.post.ts
-        │  re-fetches the full product
-        ▼
-server/utils/printful-sync.ts        → Product + ProductVariant + ProductImage rows
+Product + ProductVariant + ProductImage rows
         ▼
 server/utils/products.ts             → Product / ApparelVariant / ProductOption
         ▼
@@ -27,14 +24,19 @@ GET /api/products, GET /api/products/{slug}
 app/pages/index.vue, explore.vue, products/[slug].vue
 ```
 
-- The storefront **never calls Printful directly**. It only reads the local
-  product tables through the API.
+- The catalogue is **static demo data**. There is no fulfilment or product
+  API in the loop: nothing in this repo calls Printful (or any other
+  provider), and no order is ever placed with a printer.
 - `Product.status = "archived"` and `ProductVariant.isActive = false` rows are
   filtered out of both API endpoints. Deletions are soft so historical orders
   keep their snapshots. Only `status = "active"` products can be added to a
   cart or ordered.
-- Webhooks are the normal update path. `POST /api/printful/sync` remains a
-  manual repair tool. See `docs/printful.md`.
+- Shipping is served locally too: `GET /api/shipping/countries` returns a
+  built-in country list and `POST /api/shipping/rates` quotes two flat demo
+  rates (Standard $4.99, Express $12.99) after re-validating the cart
+  server-side. `server/utils/shipping.ts` is the single module to replace when
+  a real carrier/fulfilment provider is wired up — the API shape it returns is
+  what the checkout consumes.
 
 ## 2. API shapes
 
@@ -46,14 +48,14 @@ same object:
 | `id` | Local product id (cuid). Not used in storefront URLs. |
 | `slug` | Readable URL slug, used in `/products/{slug}`. The detail endpoint accepts the slug **or** the id. |
 | `status` | `active` (only active products are returned), `draft`, `archived`. |
-| `printfulProductId` | Printful sync product id. |
-| `name`, `description` | Product copy. Description comes from the Printful catalog product. |
+| `printfulProductId` | Legacy Printful sync product id (always `null` for new demo data; kept for old rows). |
+| `name`, `description` | Product copy from the seeded catalogue. |
 | `price` | Lowest active variant price in **major units** (for display). |
 | `priceCents` | The same value in integer cents; use this for arithmetic. |
 | `compareAtPriceCents` | Optional strike-through/original price in cents. |
 | `currency` | Product currency. |
 | `images` | Ordered image URLs from the `ProductImage` relation. |
-| `thumbnailUrl` | Printful thumbnail, or the first image. |
+| `thumbnailUrl` | Legacy thumbnail field, or the first image. |
 | `sizes` | Every active size across colours, sorted XS → 5XL. |
 | `variants` | One entry per **colour**, for swatches and colour selection. |
 | `options` | One entry per **purchasable colour + size combination**. |
@@ -138,11 +140,16 @@ to `POST /api/cart/items` as `variantId`, plus `size`, `color`, `price`,
   `POST /api/orders/{id}/mark-paid`.
 - Order tracking is `POST /api/orders/track` with `orderNumber` + `email`.
   Logged-in customers see their own orders at `GET /api/orders`.
+- `/checkout` loads the country dropdown from `GET /api/shipping/countries` and
+  the shipping estimate from `POST /api/shipping/rates` (both local demo data,
+  see §1). The server re-quotes the rate on checkout, so a client can never
+  invent a shipping price. Orders are created locally only — there is no
+  submit/confirm/sync step and nothing leaves the machine.
 
 ## 5. Assumptions
 
-- **The product tables are the storefront source of truth.** A webhook or sync
-  must run before new Printful products appear.
+- **The product tables are the storefront source of truth.** They are seeded
+  from `app/testData/products.json`; there is no live product feed.
 - **One product has one currency.** Prices are displayed per product/option.
   Checkout rejects mixed-currency carts with `409`.
 - **Colour identity is the slugified colour name.** `variants[].id` is a slug
@@ -150,9 +157,10 @@ to `POST /api/cart/items` as `variantId`, plus `size`, `color`, `price`,
   variant id. The same slug is the shareable `?color=` product URL parameter
   and the cart line's `colorSlug` — all three come from
   `colorGroupKey()` in `server/utils/products.ts`.
-- **Images are Printful-hosted URLs.** They are not downloaded or resized; the
+- **Images are external URLs.** They are not downloaded or resized; the
   UI relies on `object-cover` and lazy loading. They are stored in the
-  `ProductImage` relation and replaced wholesale on each Printful sync.
+  `ProductImage` relation and replaced wholesale when the catalogue is
+  re-seeded.
 - **Money is stored in integer cents.** The catalog/order APIs keep major-unit
   `price`/`totals` for display and add `priceCents`/`totalsCents` for exact
   arithmetic. Cart and checkout always use cents; never do floating-point math
@@ -188,9 +196,6 @@ to `POST /api/cart/items` as `variantId`, plus `size`, `color`, `price`,
   The product page also shows green "in cart" badges on the colour/size
   buttons and a note under **Add to cart** when the selected variant is
   already in the cart.
-- **Unlisted stock variants are in stock.** The v1 `stock_updated` payload only
-  lists out/discontinued catalog variants, so everything else is re-enabled
-  for the affected product before the listed ids are marked unavailable.
 
 ## 6. Verifying changes
 
@@ -210,8 +215,10 @@ curl -b cookies.txt -c cookies.txt -X POST http://localhost:3000/api/cart/items 
 
 Check that:
 
-1. New Printful products appear after the webhook or a manual sync.
-2. The home page hero and grid show real names, images and prices.
+1. The home page hero and grid show real names, images and prices.
+2. `GET /api/shipping/countries` returns the static list and
+   `POST /api/shipping/rates` (with a recipient + items) returns
+   `STANDARD`/`EXPRESS` demo rates; `/api/printful/*` no longer exists (404).
 3. Colour switches change the gallery image.
 4. Sold-out colour + size combinations are disabled.
 5. Prices are formatted from cents and use the product currency.

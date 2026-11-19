@@ -23,7 +23,7 @@ Sources were checked on 2026-10-28:
 
 | Need | Why it matters here |
 | --- | --- |
-| Physical goods | Every product is apparel fulfilled by Printful; the payment provider must support shipping addresses and physical-goods tax rules |
+| Physical goods | Every product is apparel; the payment provider must support shipping addresses and physical-goods tax rules |
 | Multi-item carts | A cart can contain several variants/products in one payment |
 | Shipping + tax lines | Totals come from the server, not the provider's product catalogue |
 | Hosted card form | Keep PCI scope at SAQ-A; never post card data to our server |
@@ -45,15 +45,15 @@ Blocking issues for this store:
 
 1. **Physical goods are excluded.** Polar's Acceptable Use Policy covers
    software, digital products and premium content, and explicitly lists
-   *physical goods* as unsupported. Apparel + Printful is the core of this
+   *physical goods* as unsupported. Apparel is the core of this
    store.
 2. **No multi-product checkout.** Polar's checkout docs state that customers
    purchase a single product per checkout and that “true multi-product checkout
    (multiple products in the same order) isn't supported yet.” Our cart
    routinely has multiple items.
 3. **Product catalogue, not shipping.** Polar's products/prices are the source
-   of truth for what is sold; shipping is not part of its order model. Printful
-   fulfilment needs item-level variants plus a shipping address that we own.
+   of truth for what is sold; shipping is not part of its order model. Our
+   checkout needs item-level variants plus a shipping address that we own.
 4. **Cost.** Starter is free/month but **5% + 50¢** per transaction, plus 1.5%
    for international cards. Stripe's standard card rate is roughly **2.9% + 30¢**
    for US cards (varies by country; cross-border cards add ~1%). At low volume
@@ -185,8 +185,8 @@ it (`cs_…`).
    verified webhook.
 5. `POST /api/payments/webhook/[provider]` verifies the signature, dedupes on
    `WebhookEvent(provider, eventKey)`, then in one transaction updates
-   `Payment`, `Order.paymentStatus`, `Order.status` (`submitted`) and triggers the
-   Printful draft submission.
+   `Payment`, `Order.paymentStatus` and `Order.status` (`submitted`). No
+   fulfilment step follows — orders are never sent anywhere (demo store).
 6. Refunds are admin-only and go through `provider.refund(...)`; the resulting
    webhook is authoritative, but write the `Refund` row immediately with
    `status = "pending"` for UX and reconcile on the event.
@@ -215,7 +215,7 @@ the payment provider.
 | --- | --- | --- |
 | Payment receipt / tax invoice | Stripe (or MoR) | Enable receipt emails in the Dashboard; the provider is the legal issuer. Do not duplicate |
 | Order confirmation | Our app | Includes order number, items, totals, shipping address |
-| Shipping/tracking update | Our app (from Printful webhook) | `Order.shippedAt`, `trackingNumber` |
+| Shipping/tracking update | Our app (not implemented — demo has no fulfilment) | Would set `Order.shippedAt`, `trackingNumber` |
 | Verify email, password reset | Our app | Required by the auth flow |
 | Refund confirmation | Our app (optional) | Provider also sends its receipt |
 
@@ -321,7 +321,7 @@ Production uses the same names in the host environment; Nitro does not read
 - Stripe CLI: `stripe listen --forward-to localhost:3000/api/payments/webhook/stripe`
   and `stripe trigger payment_intent.succeeded`.
 - Replay the same event twice → exactly one `Payment` transition, one
-  `WebhookEvent` row, one Printful submission.
+  `WebhookEvent` row, one order status update.
 - Forge a success redirect → order stays `unpaid`.
 - Partial refund → `Payment.amountRefundedCents`, `Order.refundedCents` and
   `Order.paymentStatus` agree.

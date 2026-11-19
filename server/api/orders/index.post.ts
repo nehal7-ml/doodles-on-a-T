@@ -7,7 +7,6 @@ import {
 import {
   createLocalOrder,
   serializeOrder,
-  submitOrderToPrintful,
 } from "../../utils/orders";
 import { calculateShippingRates } from "../../utils/shipping";
 
@@ -91,16 +90,7 @@ export default defineEventHandler(async (event) => {
     shippingCents: Math.round(selected.rate * 100),
   });
 
-  let result = order;
-
-  if (body.submit === true) {
-    result = await submitOrderToPrintful(order.id);
-  }
-
   setResponseStatus(event, 201);
 
-  return {
-    ...serializeOrder(result),
-    submitted: Boolean(result.printfulOrderId),
-  };
+  return serializeOrder(order);
 });

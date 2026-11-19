@@ -1,9 +1,10 @@
 # Doodles on a T
 
-Nuxt 4 storefront for a print-on-demand apparel shop. Products come from
-Printful, carts and orders are stored in SQLite locally / Turso in production,
+Nuxt 4 storefront for a print-on-demand apparel shop. The catalogue is static
+demo data, carts and orders are stored in SQLite locally / Turso in production,
 authentication is Auth.js with database sessions, and checkout goes through a
-swappable payment provider (Stripe hosted Checkout by default).
+swappable payment provider (Stripe hosted Checkout by default). No order is ever
+sent to a fulfilment provider — this is a demo.
 
 ## Stack
 
@@ -15,7 +16,7 @@ swappable payment provider (Stripe hosted Checkout by default).
 | Passwords | Argon2id (`@node-rs/argon2`) |
 | Payments | Provider adapter; Stripe hosted Checkout or `manual` |
 | Email | Provider adapter; Resend in production, console in development |
-| Fulfilment | Printful sync products, webhooks, shipping rates and orders |
+| Fulfilment | None (demo) — static catalogue, built-in demo shipping rates |
 
 Money is stored as integer cents (`*Cents` columns) and the storefront is
 USD-only. The catalog API still exposes major-unit `price` for display and adds
@@ -89,7 +90,6 @@ Email/password works without it.
 | `bun run db:studio` | Open Prisma Studio |
 | `bun run db:turso:status` | Show which migrations have reached Turso |
 | `bun run db:turso:deploy` | Apply pending migrations to Turso |
-| `bun run printful:webhooks` | Register Printful webhooks |
 
 The Prisma CLI's migration engine only accepts `file:` SQLite URLs, so
 `prisma migrate` always runs against `LOCAL_DATABASE_URL`. Generate the
@@ -104,8 +104,7 @@ changes must update that file and ship with a migration.
 Current status: phases 1, 3, 4 and 5 are implemented. Phase 2 (saved addresses,
 phone numbers, billing profiles) is deferred — checkout snapshots the shipping
 address into `OrderAddress` instead. Phase 6 is partial: order admin endpoints
-enforce `staff`/`admin` sessions, Printful automation still uses `ADMIN_TOKEN`,
-and there is no admin UI yet.
+enforce `staff`/`admin` sessions, and there is no admin UI yet.
 
 ## Cart and checkout
 
@@ -117,8 +116,8 @@ and there is no admin UI yet.
   (`manual`).
 - `POST /api/orders/track` looks up an order by `orderNumber` + `email`.
   Customers can list their own orders; `staff`/`admin` can see all.
-- Fulfilment only starts after a captured payment: `confirm` requires
-  `paymentStatus IN (paid, processing)`.
+- Orders are never submitted anywhere: fulfilment, shipping quotes and the
+  country list are local demo data (see below).
 
 Storefront behaviour (catalog API, images, colour/size selection, cart) is in
 [`docs/storefront.md`](docs/storefront.md).
@@ -131,16 +130,18 @@ only payment adapter shipped; `manual` is intended for development and bank
 transfers. Polar was rejected for physical goods. Resend and SMTP sit behind the
 same `EmailProvider` interface; `console` logs messages in development.
 
-## Printful
+## Demo shipping (no fulfilment API)
 
-Product/variant sync, webhook registration and signature verification, live
-shipping rates, order submission and tracking, and Printful order states are
-documented in [`docs/printful.md`](docs/printful.md). The storefront never calls
-Printful directly; it reads the local product tables populated by the sync.
+This is a demo storefront and is deliberately not connected to Printful or any
+other fulfilment/shipping provider: no order is ever placed with a printer.
 
-Set `PRINTFUL_KEY` (and `PRINTFUL_STORE_ID` when the token has multiple stores)
-before syncing. `PUBLIC_SITE_URL` must be a public HTTPS URL for webhook
-registration; use a tunnel during local development.
+- The catalogue is static data in the database (seeded from
+  `app/testData/products.json`).
+- `GET /api/shipping/countries` serves a built-in country list and
+  `POST /api/shipping/rates` quotes two flat demo rates (Standard $4.99,
+  Express $12.99), so the checkout flow is unchanged.
+- `docs/storefront.md` describes the shipping module to replace when a real
+  provider is wired up.
 
 ## Production
 
@@ -149,9 +150,9 @@ registration; use a tunnel during local development.
    at runtime.
 2. Run `bun run db:turso:deploy` from a machine with Turso credentials.
 3. Set `AUTH_SECRET`, `AUTH_URL` (the public HTTPS origin),
-   `AUTH_TRUST_HOST=true`, and the Google/Stripe/Resend/Printful variables you
+   `AUTH_TRUST_HOST=true`, and the Google/Stripe/Resend variables you
    actually use.
-4. Set `ADMIN_TOKEN` for machine-to-machine Printful/CLI calls. Browser admin
+4. Set `ADMIN_TOKEN` for machine-to-machine CLI/automation calls. Browser admin
    actions use `staff`/`admin` sessions instead.
 5. Build with `bun run build` and run the Nuxt output with your host's Node/Bun
    runtime. Configure the Stripe webhook to
@@ -169,6 +170,4 @@ registration; use a tunnel during local development.
 - [`docs/payments.md`](docs/payments.md) — payment/email adapters, checkout flow,
   webhooks, refunds and reconciliation.
 - [`docs/storefront.md`](docs/storefront.md) — product API, images, variants,
-  cart and page behaviour.
-- [`docs/printful.md`](docs/printful.md) — Printful sync, webhooks, shipping and
-  order lifecycle.
+  cart, page behaviour and demo shipping.

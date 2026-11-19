@@ -80,7 +80,7 @@ export function requireAdmin(event: H3Event): Promise<SessionUser> {
 
 /**
  * Admin/staff endpoints used by the browser. Humans authenticate with a
- * database session; machine callers (CLI, Printful tooling) may keep using
+ * database session; machine callers (CLI, automation) may keep using
  * `ADMIN_TOKEN`. A signed-in customer is always rejected. Without a session the
  * token is required even in development: these routes must not be anonymous.
  */

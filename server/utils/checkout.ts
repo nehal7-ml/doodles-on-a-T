@@ -1,5 +1,5 @@
 import { createError } from "h3";
-import type { PrintfulAddress } from "./printful";
+import type { ShippingAddress } from "./shipping";
 
 export type CheckoutItemInput = {
   variantId: string;
@@ -61,7 +61,7 @@ export function parseEmail(value: unknown, field = "email"): string {
   return email;
 }
 
-export function parseRecipient(value: unknown): PrintfulAddress {
+export function parseRecipient(value: unknown): ShippingAddress {
   const input = asRecord(value, "recipient");
   const countryCode = requiredString(
     input.country_code ?? input.countryCode,
@@ -133,9 +133,9 @@ export function parseRecipient(value: unknown): PrintfulAddress {
 
 /**
  * A lighter recipient parser for shipping-rate estimates. Only the country
- * (and state for US/CA/AU) is required, matching Printful's own rules.
+ * (and state for US/CA/AU) is required for a quote.
  */
-export function parseShippingRecipient(value: unknown): PrintfulAddress {
+export function parseShippingRecipient(value: unknown): ShippingAddress {
   const input = asRecord(value, "recipient");
   const countryCode = requiredString(
     input.country_code ?? input.countryCode,

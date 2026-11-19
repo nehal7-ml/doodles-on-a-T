@@ -1,7 +1,7 @@
 # Database architecture
 
-Status: **implemented through phase 5, phase 6 partial** — 2026-11-11. Phases 1, 3, 4 and 5 are implemented; phase 2 (saved addresses / phones / billing profile) is deliberately deferred; phase 6 covers role enforcement on the order endpoints but has no admin UI yet.
-Audience: every session/agent working on storefront, checkout, admin, payments or Printful.
+Status: **implemented through phase 5, phase 6 partial** — 2026-11-11. Phases 1, 3, 4 and 5 are implemented; phase 2 (saved addresses / phones / billing profile) is deliberately deferred; phase 6 covers role enforcement on the order endpoints but has no admin UI yet. 2026-11-20: the Printful integration was removed (demo store — no fulfilment API); the schema is unchanged and `printful*` columns remain as legacy.
+Audience: every session/agent working on storefront, checkout, admin or payments.
 
 > This file is the source of truth for the data model. If code and this document
 > disagree, the code is wrong. Any schema change must update this file **and**
@@ -22,7 +22,8 @@ Audience: every session/agent working on storefront, checkout, admin, payments o
 - Guest checkout is allowed. `Order.userId` is nullable; `Order.email` is always present.
 - The cart is server-side (`Cart` / `CartItem`) for both guests and logged-in users.
 - Every order stores **snapshots** of its addresses and items; editing a user's saved address later must not change history.
-- `ADMIN_TOKEN` is a machine-to-machine fallback for Printful/CLI calls and the admin order endpoints (`mark-paid`, `refund`, `confirm`, …). Browsers and humans use sessions + roles. The order endpoints reject anonymous requests even in local development when no token is configured.
+- `ADMIN_TOKEN` is a machine-to-machine fallback for CLI/automation calls and the admin order endpoints (`mark-paid`, `refund`, …). Browsers and humans use sessions + roles. The order endpoints reject anonymous requests even in local development when no token is configured.
+- **No fulfilment provider.** This is a demo: orders are never submitted to Printful or any other printer, shipping quotes/countries come from local static data (`server/utils/shipping.ts`), and the `printful*` columns on Product/Variant/Order are legacy (kept, never written with new data).
 - Payments go through a **provider adapter** (`server/payments/*`, selected by `PAYMENT_PROVIDER`). Stripe is the default; see [`docs/payments.md`](payments.md). Nothing outside `server/payments/` may import a provider SDK.
 - Transactional email is a separate `EmailProvider` adapter (Resend by default). Payment receipts come from the payment provider; order/shipping/auth emails come from our app.
 - Never trust prices, totals, roles, or user ids sent by the client.
@@ -43,7 +44,7 @@ Audience: every session/agent working on storefront, checkout, admin, payments o
 | Email | `EmailProvider` adapter; **Resend** free tier by default; `console` in dev. Provider sends receipts, we send order/shipping/auth mail. |
 | Money | `Int` cents everywhere (`*Cents`), currency ISO-4217 per row |
 | Cart | One active cart per user; guests get a random `Cart.token` cookie |
-| Order status | `status` = fulfillment lifecycle, `paymentStatus` = money, `printfulStatus` = raw remote value |
+| Order status | `status` = fulfillment lifecycle, `paymentStatus` = money, `printfulStatus` = legacy raw remote value (always `null` for new orders) |
 | Product visibility | `Product.status` (`draft`, `active`, `archived`) replaces `isActive` on products only |
 | Deletes | Soft delete via `isActive` / `status`; users are anonymised, not deleted |
 
@@ -236,7 +237,7 @@ model Address {
   line1             String
   line2             String?
   city              String
-  state             String?  // required for US/CA/AU (Printful rule)
+  state             String?  // required for US/CA/AU (shipping-quote rule)
   postalCode        String?
   countryCode       String   // ISO 3166-1 alpha-2
   phone             String?
@@ -330,7 +331,7 @@ model Product {
   priceCents          Int      @default(0)      // derived: min active variant price
   compareAtPriceCents Int?
   thumbnailUrl        String?
-  raw                 String?  // raw Printful payload (JSON)
+  raw                 String?  // legacy raw payload (JSON)
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
@@ -417,7 +418,7 @@ model ProductCategory {
 
 - Storefront queries must filter `Product.status = "active"` and `ProductVariant.isActive = true` (and `inStock` when buying).
 - Product image order comes from `ProductImage.position`; `thumbnailUrl` is a cached convenience field.
-- The Printful sync writes `ProductImage` rows (replace-all per product) and keeps `raw`.
+- The catalogue seed writes `ProductImage` rows (replace-all per product); `raw` is a legacy column that stays empty for new rows.
 - `priceCents` is always the minimum price of active variants. Serializers expose `price` in major units for the existing UI.
 - Removing `Product.images` (JSON) happens in the same migration that backfills `ProductImage`.
 
@@ -427,11 +428,11 @@ model ProductCategory {
 model Order {
   id                String    @id @default(cuid())
   orderNumber       String    @unique // DOT-…
-  externalId        String    @unique // sent to Printful (max ~32 chars)
+  externalId        String    @unique // legacy external reference (max ~32 chars)
   userId            String?   // null = guest checkout
   status            String    @default("pending") // see vocabulary below
   paymentStatus     String    @default("unpaid")
-  printfulStatus    String?   // raw status returned by Printful
+  printfulStatus    String?   // legacy: raw status returned by Printful (always null now)
   email             String
   customerName      String?
   currency          String    @default("USD")
@@ -443,7 +444,7 @@ model Order {
   refundedCents     Int       @default(0)
   shippingMethod    String?
   shippingService   String?
-  printfulOrderId   Int?      @unique
+  printfulOrderId   Int?      @unique // legacy Printful order id (always null now)
   trackingNumber    String?
   trackingUrl       String?
   carrier           String?
@@ -453,7 +454,7 @@ model Order {
   failureReason     String?
   ipAddress         String?
   userAgent         String?
-  raw               String?   // raw Printful payload (JSON)
+  raw               String?   // legacy raw payload (JSON)
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
@@ -531,21 +532,21 @@ model OrderEvent {
 | Value | Meaning |
 | --- | --- |
 | `pending` | Created, payment not captured |
-| `submitted` | Printful draft created, not confirmed |
-| `in_production` | Confirmed, Printful is producing |
+| `submitted` | Order received (payment captured / marked paid) |
+| `in_production` | Legacy fulfilment state (not produced by the demo) |
 | `partially_fulfilled` | Some items shipped |
 | `fulfilled` | All items produced |
 | `shipped` | At least one shipment in transit |
 | `delivered` | A shipment was delivered |
 | `returned` | Shipment returned |
-| `on_hold` | Printful hold |
-| `canceled` | Canceled locally or remotely |
+| `on_hold` | On hold |
+| `canceled` | Canceled locally |
 | `refunded` | Fully refunded |
-| `failed` | Printful failure |
+| `failed` | Payment/fulfilment failure |
 
-Printful mapping: `draft` → `submitted`, `inprocess` → `in_production`,
-`partial` → `partially_fulfilled`, `fulfilled` → `fulfilled`, everything else
-maps to the same name (`onhold` → `on_hold`).
+Historical note: rows created before the Printful removal may hold remote
+statuses; the legacy mapping was `draft` → `submitted`, `inprocess` →
+`in_production`, `partial` → `partially_fulfilled`, `onhold` → `on_hold`.
 
 **Payment status vocabulary** (`Order.paymentStatus`)
 
@@ -556,7 +557,7 @@ maps to the same name (`onhold` → `on_hold`).
 - `totalCents = subtotalCents - discountCents + taxCents + shippingCents` (never negative).
 - Prices/names/sizes/colors are snapshotted into `OrderItem`; later product edits must not change past orders.
 - Addresses are snapshotted into `OrderAddress` (both `shipping` and `billing` if supplied).
-- Printful fulfilment (`/confirm`) is only allowed when `paymentStatus` is `paid` or `processing` with a captured payment.
+- Orders are local-only: there is no fulfilment submission/confirmation step. `cancelOrder` flips the status locally and works for every order (legacy `printfulOrderId` values are ignored).
 - Guest orders set `userId = null` and are looked up by `orderNumber` + `email` (constant-time email comparison, 404 on mismatch).
 - Users can read only their own orders (`Order.userId = session.user.id`); staff/admin may read all.
 
@@ -632,9 +633,8 @@ model Refund {
 1. `POST /api/checkout` (authenticated or guest with cart cookie) re-prices the cart, quotes shipping, creates `Order` (`pending`/`unpaid`) + `OrderItem`/`OrderAddress` snapshots.
 2. Server calls `paymentProvider.createPayment(...)` and stores `Payment` (`requires_payment_method` / `pending`) with the returned ids. The cart is marked `converted` in the same transaction as that `Payment` row, so a provider failure leaves the cart active while a canceled hosted checkout leaves an unpaid order.
 3. The response is `{ clientSecret }` (browser confirms with Stripe.js) or `{ redirectUrl }` (hosted checkout). Both are supported by the adapter interface.
-4. The provider's verified webhook maps to `payment_succeeded` → `Payment.succeeded`, `Order.paymentStatus = paid`, `Order.status = submitted`, then submits the order to Printful as a draft.
-5. Admin confirms fulfilment (`/confirm`) only after payment.
-6. Refund events → `Refund` row, recompute `amountRefundedCents`, `Order.paymentStatus`, `Order.refundedCents`.
+4. The provider's verified webhook maps to `payment_succeeded` → `Payment.succeeded`, `Order.paymentStatus = paid`, `Order.status = submitted`. Nothing is submitted to a fulfilment provider afterwards (demo store).
+5. Refund events → `Refund` row, recompute `amountRefundedCents`, `Order.paymentStatus`, `Order.refundedCents`.
 
 ---
 
@@ -643,7 +643,7 @@ model Refund {
 ```prisma
 model WebhookEvent {
   id          String    @id @default(cuid())
-  provider    String    @default("printful") // printful | stripe
+  provider    String    @default("printful") // printful (legacy rows) | stripe | polar
   eventType   String
   eventKey    String?   // provider event id
   version     String?
@@ -683,11 +683,14 @@ model AppSetting {
 }
 ```
 
-`WebhookEvent` replaces the Printful-only table. The existing rows gain
-`provider = "printful"`; the unique key is `(provider, eventKey)` so Stripe event
-ids cannot collide with Printful ids.
+`WebhookEvent` replaces an older Printful-only table. Pre-existing rows carry
+`provider = "printful"` (legacy — no Printful webhook endpoint exists anymore);
+the unique key is `(provider, eventKey)` so provider event ids cannot collide.
+Only `stripe` rows are written today. The column default stays `"printful"` on
+purpose: changing it would need a migration for no benefit.
 
-`AppSetting` keeps integration settings (Printful secrets, feature flags).
+`AppSetting` keeps integration settings and feature flags (old rows may still
+hold Printful webhook secrets).
 
 ---
 
@@ -864,11 +867,13 @@ export async function getSessionUser(event: H3Event) {
 - `requireStaffOrToken` / `requireAdminOrToken` accept a session with the right
   role **or** `ADMIN_TOKEN`. For these endpoints the token check is strict:
   when `ADMIN_TOKEN` is unset, local development still rejects anonymous
-  requests with 401 (only the Printful/CLI machine routes keep the
-  “no token required in dev” shortcut).
-- `requireAdminToken(event)` is only used by `/api/printful/*` and automation.
-  Admin order endpoints accept **either** a valid admin/staff session or the
-  token; a signed-in customer is always rejected with 403.
+  requests with 401 (no route keeps the “no token required in dev” shortcut —
+  every caller passes `allowDevBypass: false`).
+- `requireAdminToken(event, { allowDevBypass: false })` is used by the
+  session-less read path of `GET /api/orders` and `GET /api/orders/{id}` (a
+  no-session caller must present the token). Admin order endpoints accept
+  **either** a valid admin/staff session or the token; a signed-in customer is
+  always rejected with 403.
 
 ### 6.8 Cookies & security
 
@@ -893,7 +898,7 @@ export async function getSessionUser(event: H3Event) {
 | Own account, addresses, orders, payments | ❌ | ✅ | ✅ | ✅ |
 | Order list / detail (all) | ❌ | ❌ | ✅ | ✅ |
 | Refunds | ❌ | ❌ | ❌ | ✅ |
-| Product sync / webhooks / settings | ❌ | ❌ | ❌ | ✅ (or admin token) |
+| Settings / automation (`ADMIN_TOKEN`) | ❌ | ❌ | ❌ | ✅ (or admin token) |
 | Role changes, user deactivation | ❌ | ❌ | ❌ | ✅ |
 
 ---
@@ -919,12 +924,12 @@ Everything marked “New” below is implemented as of phase 5. Rows marked
 | `GET /api/cart`, `POST /api/cart/items`, `PATCH/DELETE /api/cart/items/{id}` | New — server cart, guest token cookie |
 | `POST /api/checkout` | New — cart → order + provider session; returns `{ clientSecret }` or `{ redirectUrl }` |
 | `POST /api/payments/webhook/[provider]` | New — signature-verified, idempotent via `WebhookEvent(provider, eventKey)`; adapters in `server/payments/` |
-| `POST /api/orders` | Kept during transition; attaches `userId` when logged in, snapshots `OrderAddress`, uses cents |
-| `GET /api/orders`, `GET /api/orders/{id}` | Customer sees own orders; staff/admin see all |
-| `POST /api/orders/{id}/confirm` | Requires `admin`/`staff` **and** `paymentStatus IN (paid, processing)` |
+| `POST /api/orders` | Kept during transition; attaches `userId` when logged in, snapshots `OrderAddress`, uses cents; quotes shipping from the local demo rates |
+| `GET /api/orders`, `GET /api/orders/{id}` | Customer sees own orders; staff/admin see all (no-session callers need `ADMIN_TOKEN`) |
 | `POST /api/orders/{id}/refund` | New — admin only |
-| `/api/printful/*` | Keep admin token; also allow admin session |
-| `/api/webhooks/printful` | Writes `WebhookEvent.provider = "printful"` |
+| `POST /api/orders/{id}/mark-paid`, `/cancel` | Admin/staff session or `ADMIN_TOKEN` |
+| `GET /api/shipping/countries`, `POST /api/shipping/rates` | Local demo data (`server/utils/shipping.ts`); no external calls |
+| `/api/printful/*`, `/api/webhooks/printful`, `/api/orders/{id}/{submit,sync,confirm}` | **Removed** 2026-11-20 (Printful integration deleted) |
 
 The existing `/api/orders` body keeps working for guests, but new clients should
 use the cart + checkout endpoints so the server can persist the cart and
@@ -951,7 +956,7 @@ Phases (each is a separate migration unless noted). Status as of 2026-11-11:
 | 3 | `Cart`, `CartItem` | no | **implemented** |
 | 4 | `Payment` (incl. `providerCheckoutId`), `Refund`, `WebhookEvent.provider`, `AuditLog`; additive `Order.userId`, `Order.paymentStatus`, `Order.refundedCents` so checkout/webhooks can ship before the money rewrite | no (all additions have defaults/nulls) | **implemented** |
 | 5 | Money → `*Cents` on Product/Variant/Order/OrderItem; `ProductImage`; `Product.status`; `OrderAddress`; `Order.printfulStatus` | **yes** — code + data | **implemented** (`20261110090000_phase5_cents_catalog`) |
-| 6 | Role enforcement, admin UI, legacy `ADMIN_TOKEN` reduced to machine calls | code only | **partial** — session roles enforced on order read/confirm/cancel/submit/sync; `mark-paid`/`refund` are admin-session-or-token; Printful sync/webhooks still use `ADMIN_TOKEN`; no admin UI |
+| 6 | Role enforcement, admin UI, legacy `ADMIN_TOKEN` reduced to machine calls | code only | **partial** — session roles enforced on order read/cancel; `mark-paid`/`refund` are admin-session-or-token; `ADMIN_TOKEN` covers the no-session order read path; no admin UI (Printful endpoints removed 2026-11-20) |
 
 Phase 5 details (implemented in `20261110090000_phase5_cents_catalog`):
 
@@ -962,10 +967,11 @@ Phase 5 details (implemented in `20261110090000_phase5_cents_catalog`):
   `Product.images` and `Product.sizes` columns were dropped (sizes live on
   `ProductVariant.size`).
 - `Product.slug` was backfilled from a slugified `name` plus a short random
-  suffix, then made required and `@unique`; the Printful sync uses a name-based
-  dedupe slug. `20261115000000_readable_product_slugs` then stripped the random
-  suffix so slugs are plain readable names (`classic-cotton-t-shirt`, and `-2`,
-  `-3`… only when two products share a name).
+  suffix, then made required and `@unique`; the product sync (since removed)
+  used a name-based dedupe slug. `20261115000000_readable_product_slugs` then
+  stripped the random suffix so slugs are plain readable names
+  (`classic-cotton-t-shirt`, and `-2`, `-3`… only when two products share a
+  name).
 - `Order.email` became required; existing rows were backfilled with `''` and
   are treated as guest orders.
 - `OrderAddress` was backfilled from `Order.recipient` JSON
@@ -973,9 +979,9 @@ Phase 5 details (implemented in `20261110090000_phase5_cents_catalog`):
 - `isActive` was mapped to `status` (`true → active`, `false → archived`)
   for products only. Variants keep `isActive` / `inStock`.
 - New catalog columns (`compareAtPriceCents`, `Image`, `Category`) start
-  empty; the Printful sync repopulates them.
+  empty; the product seed repopulates them.
 - Code was updated in `server/utils/products.ts`, `orders.ts`,
-  `printful-sync.ts`, `server/cart/service.ts`, `server/checkout/service.ts`,
+  `server/cart/service.ts`, `server/checkout/service.ts`,
   `server/payments/process.ts`, `app/types.ts` and the order/cart endpoints.
   The catalog API still exposes major-unit `price` for the current UI and adds
   `priceCents`; order responses expose both `totals` and `totalsCents`.
@@ -1063,12 +1069,13 @@ at runtime.
 - **Google OAuth: included.** Enabled when `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET`
   are set; no automatic account linking by email (`docs/payments.md` §6).
 - **Multi-currency: USD-only for now.** The schema is per-row currency-ready; the
-  storefront, Printful catalogue and Stripe account all use USD.
+  storefront catalogue and Stripe account all use USD.
 - **Email: Resend free tier** behind an `EmailProvider` adapter; `console` in
   development. Password reset/verification links are logged only when
   `EMAIL_PROVIDER=console`.
 - **Tax:** `taxCents` is provider/merchant supplied for now. Revisit Stripe Tax
   (or a physical-goods MoR) if international VAT/GST registration becomes
   material; that would add a `TaxBreakdown` table.
-- **Printful confirmation** still requires a captured/paid payment and remains
-  admin/staff-only.
+- **No fulfilment (2026-11-20).** The Printful integration was removed: orders
+  are never submitted anywhere, shipping quotes/countries are local demo data,
+  and the `printful*` schema columns remain as legacy (no migration).

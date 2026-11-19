@@ -1,10 +1,6 @@
 import { createError } from "h3";
 import { getSessionUser, hasRole } from "../../utils/auth";
-import {
-  getOrderDetails,
-  refreshOrderFromPrintful,
-  serializeOrder,
-} from "../../utils/orders";
+import { getOrderDetails, serializeOrder } from "../../utils/orders";
 import { requireAdminToken } from "../../utils/request";
 
 export default defineEventHandler(async (event) => {
@@ -20,21 +16,14 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: "Order id is required" });
   }
 
-  const query = getQuery(event);
-  const shouldRefresh = query.refresh === "true" || query.refresh === "1";
-
   const existing = await getOrderDetails(id);
   if (!existing) {
     throw createError({ statusCode: 404, statusMessage: "Order not found" });
   }
 
-  // A customer may read their own order, but never refresh it from Printful.
+  // A customer may only read their own order.
   if (!privileged && existing.userId !== user?.id) {
     throw createError({ statusCode: 404, statusMessage: "Order not found" });
-  }
-
-  if (shouldRefresh && privileged && existing.printfulOrderId) {
-    return serializeOrder(await refreshOrderFromPrintful(id));
   }
 
   return serializeOrder(existing);

@@ -41,7 +41,7 @@ async function seedAdmin() {
 
 /**
  * Product fixtures are destructive (they clear the catalogue), so they are
- * opt-in. Production catalogues come from Printful sync.
+ * opt-in. The shipped catalogue lives in app/testData/products.json.
  */
 async function seedProducts() {
   if (process.env.SEED_PRODUCTS !== "true") {

@@ -9,13 +9,15 @@ import {
 } from "../cart/service";
 import type { SessionUser } from "../utils/auth";
 import { serializeOrder, type OrderWithDetails } from "../utils/orders";
-import type { PrintfulAddress } from "../utils/printful";
 import { prisma } from "../utils/prisma";
-import { calculateShippingRates } from "../utils/shipping";
+import {
+  calculateShippingRates,
+  type ShippingAddress,
+} from "../utils/shipping";
 import { getPaymentProvider } from "../payments";
 
 export type CheckoutInput = {
-  recipient: PrintfulAddress;
+  recipient: ShippingAddress;
   email: string;
   customerName?: string | null;
   shippingMethod?: string;

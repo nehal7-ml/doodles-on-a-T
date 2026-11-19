@@ -127,8 +127,8 @@ model CartItem {
 }
 
 /// A product that is shown in the store.
-/// Products that come from Printful keep their Printful sync product id so
-/// webhook events can be matched back to the local row.
+/// `printfulProductId` is a legacy Printful sync id kept for old rows; the
+/// demo catalogue never writes it.
 model Product {
   id                  String            @id @default(cuid())
   slug                String            @unique
@@ -153,9 +153,8 @@ model Product {
 }
 
 /// One purchasable size/colour combination.
-/// For Printful products `printfulVariantId` is the Sync Variant id that is
-/// sent when an order is created and `catalogVariantId` is the blank catalog
-/// variant id that is used for shipping rate estimates.
+/// `printfulVariantId` / `catalogVariantId` are legacy Printful ids kept for
+/// old rows; the demo catalogue never writes them.
 model ProductVariant {
   id                  String         @id @default(cuid())
   printfulVariantId   Int?           @unique
@@ -382,7 +381,7 @@ model Refund {
 /// failed events much easier.
 model WebhookEvent {
   id          String    @id @default(cuid())
-  provider    String    @default("printful") // printful | stripe | polar
+  provider    String    @default("printful") // printful (legacy default) | stripe | polar
   eventType   String
   eventKey    String?
   version     String?
@@ -417,8 +416,8 @@ model AuditLog {
   @@index([createdAt])
 }
 
-/// Small key/value store used for integration settings such as the Printful
-/// webhook signing secret returned when webhooks are registered.
+/// Small key/value store used for integration settings and feature flags
+/// (legacy Printful webhook secrets may still exist in old rows).
 model AppSetting {
   key       String   @id
   value     String

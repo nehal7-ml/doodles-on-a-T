@@ -4,7 +4,6 @@ import { sendOrderConfirmation } from "../../../payments/process";
 import {
   getOrderDetails,
   serializeOrder,
-  submitOrderToPrintful,
 } from "../../../utils/orders";
 import { prisma } from "../../../utils/prisma";
 import { requireAdminOrToken } from "../../../utils/auth";
@@ -114,20 +113,11 @@ export default defineEventHandler(async (event) => {
 
   await sendOrderConfirmation(order.id);
 
-  let printfulError: string | undefined;
-  try {
-    await submitOrderToPrintful(order.id);
-  } catch (error) {
-    printfulError =
-      error instanceof Error ? error.message : "Printful submission failed.";
-  }
-
   const updated = await getOrderDetails(order.id);
   if (!updated) {
     throw createError({ statusCode: 404, statusMessage: "Order not found." });
   }
   return {
     order: serializeOrder(updated),
-    printfulError,
   };
 });
