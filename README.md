@@ -143,6 +143,20 @@ other fulfilment/shipping provider: no order is ever placed with a printer.
 - `docs/storefront.md` describes the shipping module to replace when a real
   provider is wired up.
 
+## Catalogue CSV import
+
+Products are added and updated from a CSV instead of code: one row per
+variant, sourced from the `PRODUCTS_CSV` environment variable (local path or
+http(s) URL). Two triggers share one implementation:
+
+- `bun run products:import` (add `-- --dry-run` to validate only)
+- `POST /api/admin/products/import` — admin session or `x-admin-token`
+
+Products missing from the file are untouched, so imports are upsert-only and
+safe to re-run. Column reference, semantics and examples are in
+[`docs/products-csv.md`](docs/products-csv.md); a full example matching
+the seeded catalogue lives at `app/testData/products.csv`.
+
 ## Production
 
 1. Create a Turso database and set `DATABASE_URL` (`libsql://…`) and
@@ -171,3 +185,5 @@ other fulfilment/shipping provider: no order is ever placed with a printer.
   webhooks, refunds and reconciliation.
 - [`docs/storefront.md`](docs/storefront.md) — product API, images, variants,
   cart, page behaviour and demo shipping.
+- [`docs/products-csv.md`](docs/products-csv.md) — adding/updating products
+  from a CSV (CLI + admin endpoint).

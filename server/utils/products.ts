@@ -62,7 +62,7 @@ function sortSizes(sizes: string[]): string[] {
   });
 }
 
-function slugify(value: string): string {
+export function slugify(value: string): string {
   return (
     value
       .toLowerCase()

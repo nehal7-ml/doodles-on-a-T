@@ -16,7 +16,8 @@
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
     "db:turso:status": "bun scripts/db-turso.ts status",
-    "db:turso:deploy": "bun scripts/db-turso.ts deploy"
+    "db:turso:deploy": "bun scripts/db-turso.ts deploy",
+    "products:import": "bun scripts/import-products.ts"
   },
   "dependencies": {
     "@auth/core": "^0.41.3",

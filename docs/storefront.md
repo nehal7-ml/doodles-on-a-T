@@ -149,7 +149,8 @@ to `POST /api/cart/items` as `variantId`, plus `size`, `color`, `price`,
 ## 5. Assumptions
 
 - **The product tables are the storefront source of truth.** They are seeded
-  from `app/testData/products.json`; there is no live product feed.
+  from `app/testData/products.json` and updated thereafter through the CSV
+  import (`docs/products-csv.md`); there is no live product feed.
 - **One product has one currency.** Prices are displayed per product/option.
   Checkout rejects mixed-currency carts with `409`.
 - **Colour identity is the slugified colour name.** `variants[].id` is a slug
