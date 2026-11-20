@@ -90,6 +90,7 @@ Email/password works without it.
 | `bun run db:studio` | Open Prisma Studio |
 | `bun run db:turso:status` | Show which migrations have reached Turso |
 | `bun run db:turso:deploy` | Apply pending migrations to Turso |
+| `bun run products:import` | Import/update products from `PRODUCTS_CSV` (append `-- --dry-run` to validate only) |
 
 The Prisma CLI's migration engine only accepts `file:` SQLite URLs, so
 `prisma migrate` always runs against `LOCAL_DATABASE_URL`. Generate the
@@ -147,15 +148,30 @@ other fulfilment/shipping provider: no order is ever placed with a printer.
 
 Products are added and updated from a CSV instead of code: one row per
 variant, sourced from the `PRODUCTS_CSV` environment variable (local path or
-http(s) URL). Two triggers share one implementation:
+http(s) URL — Vercel Blob, raw GitHub, Google Drive direct link). Two
+triggers share one implementation:
 
-- `bun run products:import` (add `-- --dry-run` to validate only)
+- `bun run products:import` — reads `PRODUCTS_CSV`; `--file <path|url>`
+  overrides it, `-- --dry-run` validates and reports without writing.
 - `POST /api/admin/products/import` — admin session or `x-admin-token`
+  header; body `{"dryRun": true}` for a dry run; a bad file returns `422`
+  with row-numbered errors.
 
 Products missing from the file are untouched, so imports are upsert-only and
-safe to re-run. Column reference, semantics and examples are in
-[`docs/products-csv.md`](docs/products-csv.md); a full example matching
-the seeded catalogue lives at `app/testData/products.csv`.
+safe to re-run. Within a listed product, variants are matched by colour +
+size, images are replaced wholesale, and variants that disappear from the
+file are deactivated rather than deleted. A minimal file looks like this
+(`name` + `price` are the only required columns):
+
+```csv
+slug,name,color,size,price,in_stock,active,colors
+doodle-tee,Doodle Tee,Black,M,24.99,true,true,#000000
+doodle-tee,Doodle Tee,Sand,M,24.99,true,true,#d9c6a5
+```
+
+Full column reference, semantics and endpoint examples are in
+[`docs/products-csv.md`](docs/products-csv.md); a complete file matching the
+seeded catalogue lives at `app/testData/products.csv`.
 
 ## Production
 
@@ -166,8 +182,11 @@ the seeded catalogue lives at `app/testData/products.csv`.
 3. Set `AUTH_SECRET`, `AUTH_URL` (the public HTTPS origin),
    `AUTH_TRUST_HOST=true`, and the Google/Stripe/Resend variables you
    actually use.
-4. Set `ADMIN_TOKEN` for machine-to-machine CLI/automation calls. Browser admin
-   actions use `staff`/`admin` sessions instead.
+4. Set `ADMIN_TOKEN` for machine-to-machine CLI/automation calls (it also
+   authorises `POST /api/admin/products/import`). Set `PRODUCTS_CSV` to the
+   catalogue CSV's URL to enable that import — Nitro reads it from the host
+   environment, not from `.env*` files. Browser admin actions use
+   `staff`/`admin` sessions instead.
 5. Build with `bun run build` and run the Nuxt output with your host's Node/Bun
    runtime. Configure the Stripe webhook to
    `{PUBLIC_SITE_URL}/api/payments/webhook/stripe`.
