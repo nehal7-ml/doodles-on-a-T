@@ -2,11 +2,31 @@
 @import "@nuxt/ui";
 
 /* =========================================================================
-   Site canvas backgrounds — all in main.css so light and dark live together.
-   - Light: warm paper with visible grain + a two-tier graph-paper grid.
-   - Dark: untouched (the layout's original 24px grid + zinc-900), pending
-     the blackboard/chalk redesign.
+   Canvas backgrounds — light mode is paper, dark mode is a slate chalkboard.
+   Both live here so the two modes stay side by side.
+
+   Light:  warm paper with visible grain + a two-tier graph-paper grid.
+   Dark:   slate board with chalk-dust grain, soft eraser smudges and a
+           faint chalk-drawn grid.
    ========================================================================= */
+
+/* Sticker button tokens — die-cut edge, outline and hard offset shadow,
+   swapped per mode (chalk white on the board). */
+html {
+  --sticker-edge: #ffffff;
+  --sticker-outline: rgba(28, 25, 23, 0.85);
+  --sticker-drop: rgba(28, 25, 23, 0.18);
+  --sticker-drop-hover: rgba(28, 25, 23, 0.24);
+}
+
+html.dark {
+  --sticker-edge: #f4f1ea;
+  --sticker-outline: rgba(0, 0, 0, 0.5);
+  --sticker-drop: rgba(0, 0, 0, 0.4);
+  --sticker-drop-hover: rgba(0, 0, 0, 0.55);
+}
+
+/* ------------------------------------------------------------------ light */
 
 /* Warm paper base color for overscroll areas outside .site-canvas. */
 html:not(.dark) {
@@ -34,34 +54,90 @@ html:not(.dark) .site-canvas {
   background-repeat: repeat;
 }
 
-/* The layout's original grid overlay is a dark-mode leftover now: light mode
-   draws its own graph-paper grid on .site-canvas instead. */
-html:not(.dark) .page-grid-overlay {
-  display: none;
-}
-
 /* Header sits translucent over the paper; tint it to the paper color so it
    reads as the same sheet rather than a neutral strip. */
 html:not(.dark) header {
   background-color: rgba(247, 242, 231, 0.85);
 }
 
+/* ------------------------------------------------------------------- dark */
+
+/* Overscroll color just past the edges of the board. */
+html.dark {
+  background-color: #141516;
+}
+
+/* Dark mode: slate chalkboard — chalk-dust grain, two soft eraser smudges
+   (fixed to the viewport so they don't tile) and a faint chalk grid. */
+html.dark .site-canvas {
+  color: #e9e6e0;
+  background-color: #1b1d1f;
+  background-image:
+    /* chalk dust */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='d'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23d)' opacity='0.09'/%3E%3C/svg%3E"),
+    /* eraser smudges */
+    radial-gradient(
+      650px 420px at 18% 8%,
+      rgba(255, 255, 255, 0.04),
+      transparent 65%
+    ),
+    radial-gradient(
+      520px 380px at 82% 55%,
+      rgba(255, 255, 255, 0.028),
+      transparent 70%
+    ),
+    /* major chalk lines (every 5 minor squares) */
+    linear-gradient(to bottom, rgba(228, 231, 236, 0.085) 1px, transparent 1px),
+    linear-gradient(to right, rgba(228, 231, 236, 0.085) 1px, transparent 1px),
+    /* minor chalk lines */
+    linear-gradient(to bottom, rgba(228, 231, 236, 0.05) 1px, transparent 1px),
+    linear-gradient(to right, rgba(228, 231, 236, 0.05) 1px, transparent 1px);
+  background-size:
+    140px 140px,
+    auto,
+    auto,
+    120px 120px,
+    120px 120px,
+    24px 24px,
+    24px 24px;
+  background-attachment:
+    scroll,
+    fixed,
+    fixed,
+    scroll,
+    scroll,
+    scroll,
+    scroll;
+  background-repeat:
+    repeat,
+    no-repeat,
+    no-repeat,
+    repeat,
+    repeat,
+    repeat,
+    repeat;
+}
+
+html.dark header {
+  background-color: rgba(27, 29, 31, 0.85);
+}
+
+html.dark footer {
+  background-color: rgba(27, 29, 31, 0.6);
+}
+
 /* =========================================================================
-   Sticker buttons (light mode).
-   Die-cut look: white cut edge, thin ink outline, hard offset shadow.
-   Tailwind utilities live in @layer utilities, so these unlayered rules win
-   over component classes without !important.
+   Sticker buttons — die-cut look in both modes: a cut edge, a thin outline
+   and a hard offset shadow. Tailwind utilities live in @layer utilities, so
+   these unlayered rules win over component classes without !important.
    ========================================================================= */
 
-html:not(.dark)
-  :is(button, a)[data-slot="base"],
-html:not(.dark)
-  :where(header, main, footer)
-  button:not([data-slot="base"]) {
+:is(button, a)[data-slot="base"],
+:where(header, main, footer) button:not([data-slot="base"]) {
   box-shadow:
-    0 0 0 2px #fff,
-    0 0 0 3px rgba(28, 25, 23, 0.85),
-    3px 4px 0 rgba(28, 25, 23, 0.18);
+    0 0 0 2px var(--sticker-edge),
+    0 0 0 3px var(--sticker-outline),
+    3px 4px 0 var(--sticker-drop);
 }
 
 /* Tailwind v4 preflight leaves buttons on the default cursor. */
@@ -71,37 +147,30 @@ a[data-slot="base"] {
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  html:not(.dark)
-    :is(button, a)[data-slot="base"],
-  html:not(.dark)
-    :where(header, main, footer)
-    button:not([data-slot="base"]) {
+  :is(button, a)[data-slot="base"],
+  :where(header, main, footer) button:not([data-slot="base"]) {
     transition:
       transform 0.12s ease,
       box-shadow 0.12s ease;
   }
 
-  html:not(.dark)
-    :is(button, a)[data-slot="base"]:hover:not(:disabled),
-  html:not(.dark)
-    :where(header, main, footer)
+  :is(button, a)[data-slot="base"]:hover:not(:disabled),
+  :where(header, main, footer)
     button:not([data-slot="base"]):hover:not(:disabled) {
     transform: translateY(-2px);
     box-shadow:
-      0 0 0 2px #fff,
-      0 0 0 3px rgba(28, 25, 23, 0.85),
-      4px 6px 0 rgba(28, 25, 23, 0.24);
+      0 0 0 2px var(--sticker-edge),
+      0 0 0 3px var(--sticker-outline),
+      4px 6px 0 var(--sticker-drop-hover);
   }
 
-  html:not(.dark)
-    :is(button, a)[data-slot="base"]:active:not(:disabled),
-  html:not(.dark)
-    :where(header, main, footer)
+  :is(button, a)[data-slot="base"]:active:not(:disabled),
+  :where(header, main, footer)
     button:not([data-slot="base"]):active:not(:disabled) {
     transform: translateY(1px);
     box-shadow:
-      0 0 0 2px #fff,
-      0 0 0 3px rgba(28, 25, 23, 0.85),
-      1px 1px 0 rgba(28, 25, 23, 0.16);
+      0 0 0 2px var(--sticker-edge),
+      0 0 0 3px var(--sticker-outline),
+      1px 1px 0 var(--sticker-drop);
   }
 }
