@@ -51,7 +51,7 @@ useHead({ title: "Explore · doodles.on.a.T" });
   <div class="space-y-8">
     <header class="space-y-3">
       <span
-        class="inline-block bg-yellow-100 dark:bg-yellow-950 text-yellow-800 dark:text-yellow-200 border-2 border-yellow-700 dark:border-yellow-300 px-3 py-1 rounded-full text-sm font-bold rotate-[-1deg]"
+        class="inline-block bg-coral-100 dark:bg-coral-950 text-coral-800 dark:text-coral-200 border-2 border-coral-700 dark:border-coral-300 px-3 py-1 rounded-full text-sm font-bold rotate-[-1deg]"
       >
         The Sketchbook
       </span>
@@ -60,13 +60,13 @@ useHead({ title: "Explore · doodles.on.a.T" });
           <h1 class="text-4xl md:text-5xl font-black tracking-tight">
             Explore the doodles
           </h1>
-          <p class="mt-2 text-stone-600 dark:text-zinc-400 font-medium">
+          <p class="mt-2 text-slate-600 dark:text-zinc-400 font-medium">
             Every shirt starts as a messy little drawing. Pick your favourite.
           </p>
         </div>
         <span
           v-if="products"
-          class="font-mono text-sm text-stone-500 dark:text-zinc-400 rotate-[1deg]"
+          class="font-mono text-sm text-slate-500 dark:text-zinc-400 rotate-[1deg]"
         >
           {{ filteredProducts.length }} /
           {{ products.length }} sketches
@@ -75,7 +75,7 @@ useHead({ title: "Explore · doodles.on.a.T" });
     </header>
 
     <div
-      class="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between border-y-2 border-dashed border-stone-300 dark:border-zinc-700 py-4"
+      class="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between border-y-2 border-dashed border-slate-300 dark:border-zinc-700 py-4"
     >
       <UInput
         v-model="search"
@@ -85,13 +85,13 @@ useHead({ title: "Explore · doodles.on.a.T" });
         class="w-full sm:max-w-xs"
         :ui="{ base: 'rounded-md' }"
       />
-      <div class="flex items-center gap-2">
+      <div class="flex items-center gap-2 w-full sm:w-auto">
         <span class="text-sm font-bold whitespace-nowrap">Sort by</span>
         <USelect
           v-model="sort"
           :items="sortOptions"
           size="lg"
-          class="w-52"
+          class="w-full sm:w-52"
         />
       </div>
     </div>
@@ -104,15 +104,15 @@ useHead({ title: "Explore · doodles.on.a.T" });
 
     <div
       v-else-if="error"
-      class="border-2 border-stone-900 dark:border-zinc-100 rounded-lg bg-white dark:bg-zinc-950 p-10 text-center space-y-4"
+      class="border-2 border-slate-900 dark:border-zinc-100 rounded-lg bg-white dark:bg-zinc-950 p-10 text-center space-y-4"
     >
       <UIcon
         name="i-heroicons-exclamation-triangle"
-        class="w-12 h-12 mx-auto text-yellow-500"
+        class="w-12 h-12 mx-auto text-coral-500"
       />
       <div>
         <h2 class="text-xl font-bold">The pencils jammed.</h2>
-        <p class="text-stone-500 dark:text-zinc-400">
+        <p class="text-slate-500 dark:text-zinc-400">
           We couldn't load the catalog. Try again in a moment.
         </p>
       </div>
@@ -123,14 +123,14 @@ useHead({ title: "Explore · doodles.on.a.T" });
 
     <div
       v-else-if="!filteredProducts.length"
-      class="border-2 border-dashed border-stone-400 dark:border-zinc-600 rounded-lg p-12 text-center space-y-3"
+      class="border-2 border-dashed border-slate-400 dark:border-zinc-600 rounded-lg p-12 text-center space-y-3"
     >
       <UIcon
         name="i-heroicons-face-smile"
-        class="w-12 h-12 mx-auto text-stone-400 dark:text-zinc-500"
+        class="w-12 h-12 mx-auto text-slate-400 dark:text-zinc-500"
       />
       <h2 class="text-xl font-bold">No doodles found</h2>
-      <p class="text-stone-500 dark:text-zinc-400">
+      <p class="text-slate-500 dark:text-zinc-400">
         Try a different search or clear the filters.
       </p>
       <UButton

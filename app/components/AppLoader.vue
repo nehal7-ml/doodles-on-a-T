@@ -30,7 +30,7 @@ const ringSizes = {
     class="flex flex-col items-center justify-center gap-4"
     :class="
       fullscreen
-        ? 'fixed inset-0 z-50 bg-stone-50/90 dark:bg-zinc-900/90 backdrop-blur-sm'
+        ? 'app-loader fixed inset-0 z-50 bg-slate-50/90 dark:bg-zinc-900/90 backdrop-blur-sm'
         : 'py-16'
     "
     role="status"
@@ -38,12 +38,12 @@ const ringSizes = {
   >
     <div class="relative" :class="ringSizes[size]">
       <span
-        class="absolute inset-0 rounded-full border-2 border-dashed border-stone-400 dark:border-zinc-600 animate-spin"
+        class="absolute inset-0 rounded-full border-2 border-dashed border-slate-400 dark:border-zinc-600 animate-spin"
       />
       <span class="absolute inset-0 flex items-center justify-center">
         <UIcon
           name="i-heroicons-pencil-square"
-          class="text-stone-700 dark:text-zinc-200 animate-pulse"
+          class="text-slate-700 dark:text-zinc-200 animate-pulse"
           :class="iconSizes[size]"
         />
       </span>
@@ -51,7 +51,7 @@ const ringSizes = {
 
     <p
       v-if="label"
-      class="font-mono text-sm text-stone-500 dark:text-zinc-400 rotate-[-1deg]"
+      class="font-mono text-sm text-slate-500 dark:text-zinc-400 rotate-[-1deg]"
     >
       {{ label }}
     </p>

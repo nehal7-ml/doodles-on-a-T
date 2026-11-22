@@ -234,14 +234,14 @@ useHead({ title: "Checkout" });
 
   <div
     v-else-if="availableItems.length === 0"
-    class="max-w-xl mx-auto border-2 border-dashed border-stone-300 dark:border-zinc-700 rounded-lg p-10 text-center space-y-4"
+    class="max-w-xl mx-auto border-2 border-dashed border-slate-300 dark:border-zinc-700 rounded-lg p-10 text-center space-y-4"
   >
     <UIcon
       name="i-heroicons-shopping-bag"
-      class="w-12 h-12 mx-auto text-stone-400"
+      class="w-12 h-12 mx-auto text-slate-400"
     />
     <p class="text-xl font-bold">There is nothing to check out</p>
-    <p class="text-stone-500 dark:text-zinc-400">
+    <p class="text-slate-500 dark:text-zinc-400">
       Your cart is empty. Add something first.
     </p>
     <UButton to="/explore" color="primary">Explore the sketchbook</UButton>
@@ -249,7 +249,7 @@ useHead({ title: "Checkout" });
 
   <div v-else class="grid lg:grid-cols-[1.4fr_1fr] gap-6 items-start">
     <form
-      class="border-2 border-dashed border-stone-300 dark:border-zinc-700 rounded-lg p-5 space-y-5"
+      class="border-2 border-dashed border-slate-300 dark:border-zinc-700 rounded-lg p-5 space-y-5"
       @submit.prevent="submit"
     >
       <section class="space-y-3">
@@ -261,7 +261,7 @@ useHead({ title: "Checkout" });
             type="email"
             autocomplete="email"
             required
-            class="mt-1 w-full rounded-md border-2 border-stone-300 dark:border-zinc-700 bg-transparent px-3 py-2"
+            class="mt-1 w-full rounded-md border-2 border-slate-300 dark:border-zinc-700 bg-transparent px-3 py-2"
           />
         </label>
       </section>
@@ -275,7 +275,7 @@ useHead({ title: "Checkout" });
             v-model="form.name"
             autocomplete="name"
             required
-            class="mt-1 w-full rounded-md border-2 border-stone-300 dark:border-zinc-700 bg-transparent px-3 py-2"
+            class="mt-1 w-full rounded-md border-2 border-slate-300 dark:border-zinc-700 bg-transparent px-3 py-2"
           />
         </label>
 
@@ -284,7 +284,7 @@ useHead({ title: "Checkout" });
           <select
             v-model="form.country_code"
             :disabled="countriesLoading"
-            class="mt-1 w-full rounded-md border-2 border-stone-300 dark:border-zinc-700 bg-transparent px-3 py-2"
+            class="mt-1 w-full rounded-md border-2 border-slate-300 dark:border-zinc-700 bg-transparent px-3 py-2"
           >
             <option
               v-for="country in countries"
@@ -302,7 +302,7 @@ useHead({ title: "Checkout" });
             v-model="form.address1"
             autocomplete="address-line1"
             required
-            class="mt-1 w-full rounded-md border-2 border-stone-300 dark:border-zinc-700 bg-transparent px-3 py-2"
+            class="mt-1 w-full rounded-md border-2 border-slate-300 dark:border-zinc-700 bg-transparent px-3 py-2"
           />
         </label>
 
@@ -311,7 +311,7 @@ useHead({ title: "Checkout" });
           <input
             v-model="form.address2"
             autocomplete="address-line2"
-            class="mt-1 w-full rounded-md border-2 border-stone-300 dark:border-zinc-700 bg-transparent px-3 py-2"
+            class="mt-1 w-full rounded-md border-2 border-slate-300 dark:border-zinc-700 bg-transparent px-3 py-2"
           />
         </label>
 
@@ -322,7 +322,7 @@ useHead({ title: "Checkout" });
               v-model="form.city"
               autocomplete="address-level2"
               required
-              class="mt-1 w-full rounded-md border-2 border-stone-300 dark:border-zinc-700 bg-transparent px-3 py-2"
+              class="mt-1 w-full rounded-md border-2 border-slate-300 dark:border-zinc-700 bg-transparent px-3 py-2"
             />
           </label>
           <label class="block text-sm font-medium">
@@ -331,7 +331,7 @@ useHead({ title: "Checkout" });
               v-model="form.state_code"
               autocomplete="address-level1"
               :required="stateRequired"
-              class="mt-1 w-full rounded-md border-2 border-stone-300 dark:border-zinc-700 bg-transparent px-3 py-2"
+              class="mt-1 w-full rounded-md border-2 border-slate-300 dark:border-zinc-700 bg-transparent px-3 py-2"
             />
           </label>
           <label class="block text-sm font-medium">
@@ -340,7 +340,7 @@ useHead({ title: "Checkout" });
               v-model="form.zip"
               autocomplete="postal-code"
               required
-              class="mt-1 w-full rounded-md border-2 border-stone-300 dark:border-zinc-700 bg-transparent px-3 py-2"
+              class="mt-1 w-full rounded-md border-2 border-slate-300 dark:border-zinc-700 bg-transparent px-3 py-2"
             />
           </label>
         </div>
@@ -350,7 +350,7 @@ useHead({ title: "Checkout" });
           <input
             v-model="form.phone"
             autocomplete="tel"
-            class="mt-1 w-full rounded-md border-2 border-stone-300 dark:border-zinc-700 bg-transparent px-3 py-2"
+            class="mt-1 w-full rounded-md border-2 border-slate-300 dark:border-zinc-700 bg-transparent px-3 py-2"
           />
         </label>
       </section>
@@ -372,7 +372,7 @@ useHead({ title: "Checkout" });
 
         <p
           v-if="!quoted && !quotePending"
-          class="text-sm text-stone-500 dark:text-zinc-400"
+          class="text-sm text-slate-500 dark:text-zinc-400"
         >
           Enter the address, then fetch live shipping rates.
         </p>
@@ -381,9 +381,9 @@ useHead({ title: "Checkout" });
           <label
             v-for="rate in rates"
             :key="rate.id"
-            class="flex items-center justify-between gap-4 rounded-md border-2 border-stone-300 dark:border-zinc-700 px-3 py-2 cursor-pointer"
+            class="flex items-center justify-between gap-4 rounded-md border-2 border-slate-300 dark:border-zinc-700 px-3 py-2 cursor-pointer"
             :class="{
-              'border-stone-950 dark:border-zinc-50': selectedRate === rate.id,
+              'border-slate-950 dark:border-zinc-50': selectedRate === rate.id,
             }"
           >
             <span class="flex items-center gap-2">
@@ -392,7 +392,7 @@ useHead({ title: "Checkout" });
                 <span class="font-medium">{{ rate.name }}</span>
                 <span
                   v-if="rate.minDeliveryDays || rate.maxDeliveryDays"
-                  class="block text-xs text-stone-500 dark:text-zinc-400"
+                  class="block text-xs text-slate-500 dark:text-zinc-400"
                 >
                   {{ rate.minDeliveryDays ?? "?" }}–{{
                     rate.maxDeliveryDays ?? "?"
@@ -409,7 +409,7 @@ useHead({ title: "Checkout" });
 
         <p
           v-if="rates.some((rate) => rate.customsFeesPossible)"
-          class="text-xs text-stone-500 dark:text-zinc-400"
+          class="text-xs text-slate-500 dark:text-zinc-400"
         >
           Customs or import fees may be charged by the destination country.
         </p>
@@ -426,24 +426,24 @@ useHead({ title: "Checkout" });
         type="submit"
         color="primary"
         size="lg"
-        class="w-full justify-center font-bold border-2 border-stone-950 dark:border-zinc-50 rounded-md"
+        class="w-full justify-center font-bold border-2 border-slate-950 dark:border-zinc-50 rounded-md"
         :loading="submitPending"
         :disabled="!canSubmit"
       >
         Pay {{ formatPrice(totalCents / 100, cart.currency) }}
       </UButton>
 
-      <p class="text-xs text-stone-500 dark:text-zinc-400">
+      <p class="text-xs text-slate-500 dark:text-zinc-400">
         You will be redirected to the payment provider. Card details never touch
         this server.
       </p>
     </form>
 
     <aside
-      class="rounded-md border-2 border-dashed border-stone-300 dark:border-zinc-700 p-5 h-fit space-y-3 lg:sticky lg:top-4"
+      class="rounded-md border-2 border-dashed border-slate-300 dark:border-zinc-700 p-5 h-fit space-y-3 lg:sticky lg:top-4"
     >
       <h2 class="text-xl font-bold">Your order</h2>
-      <div class="h-1 border-b dark:border-stone-700" />
+      <div class="h-1 border-b dark:border-zinc-700" />
 
       <ul class="space-y-2">
         <li
@@ -455,7 +455,7 @@ useHead({ title: "Checkout" });
             <span class="font-medium block truncate">
               {{ item.productName }}
             </span>
-            <span class="text-stone-500 dark:text-zinc-400">
+            <span class="text-slate-500 dark:text-zinc-400">
               {{ [item.variantName, item.size].filter(Boolean).join(" · ") }} ×
               {{ item.quantity }}
             </span>
@@ -466,7 +466,7 @@ useHead({ title: "Checkout" });
         </li>
       </ul>
 
-      <div class="h-1 border-b dark:border-stone-700" />
+      <div class="h-1 border-b dark:border-zinc-700" />
 
       <p class="flex justify-between text-sm">
         <span>Subtotal</span>
@@ -475,10 +475,10 @@ useHead({ title: "Checkout" });
       <p class="flex justify-between text-sm">
         <span>Shipping</span>
         <span v-if="quote">{{ formatPrice(quote.rate, quote.currency) }}</span>
-        <span v-else class="text-stone-500">Not quoted</span>
+        <span v-else class="text-slate-500">Not quoted</span>
       </p>
 
-      <div class="h-1 border-b dark:border-stone-700" />
+      <div class="h-1 border-b dark:border-zinc-700" />
 
       <p class="flex justify-between font-bold text-lg">
         <span>Total</span>

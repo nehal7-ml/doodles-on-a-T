@@ -1,6 +1,22 @@
 @import "tailwindcss";
 @import "@nuxt/ui";
 
+/* Coral accent palette (the site's sticky-note color) so utilities like
+   bg-coral-100 / text-coral-800 exist. */
+@theme {
+  --color-coral-50: #fff6f3;
+  --color-coral-100: #ffe9e2;
+  --color-coral-200: #ffd5c9;
+  --color-coral-300: #ffb4a0;
+  --color-coral-400: #ff8f73;
+  --color-coral-500: #f96a4b;
+  --color-coral-600: #e5502f;
+  --color-coral-700: #c23f22;
+  --color-coral-800: #a03620;
+  --color-coral-900: #83301f;
+  --color-coral-950: #471610;
+}
+
 /* =========================================================================
    Canvas backgrounds — light mode is paper, dark mode is a slate chalkboard.
    Both live here so the two modes stay side by side.
@@ -14,9 +30,9 @@
    swapped per mode (chalk white on the board). */
 html {
   --sticker-edge: #ffffff;
-  --sticker-outline: rgba(28, 25, 23, 0.85);
-  --sticker-drop: rgba(28, 25, 23, 0.18);
-  --sticker-drop-hover: rgba(28, 25, 23, 0.24);
+  --sticker-outline: rgba(15, 23, 42, 0.85);
+  --sticker-drop: rgba(15, 23, 42, 0.18);
+  --sticker-drop-hover: rgba(15, 23, 42, 0.24);
 }
 
 html.dark {
@@ -28,25 +44,31 @@ html.dark {
 
 /* ------------------------------------------------------------------ light */
 
-/* Warm paper base color for overscroll areas outside .site-canvas. */
+/* Cool blue-white sketch paper. One var drives the page, header, footer
+   and the fullscreen loader veil. */
 html:not(.dark) {
-  background-color: #f7f2e7;
+  --paper: #f2f5f8;
+  background-color: var(--paper);
 }
 
-/* Light mode: paper (grain first so it paints on top of the grid). */
+/* Light mode: paper — ink-blue fiber speckle + soft mottling for depth,
+   then the graph grid (grain first so it paints on top of everything). */
 html:not(.dark) .site-canvas {
-  background-color: #f7f2e7;
+  background-color: var(--paper);
   background-image:
-    /* paper grain */
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23p)' opacity='0.14'/%3E%3C/svg%3E"),
+    /* paper fiber grain: slate-ink speckles at varying density */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.29 0 0 0 0 0.33 0 0 0 0 0.4 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23p)' opacity='0.4'/%3E%3C/svg%3E"),
+    /* low-frequency mottling so the sheet isn't perfectly even */
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.005' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.62 0 0 0 0 0.68 0 0 0 0 0.76 0 0 0 0.6 0'/%3E%3C/filter%3E%3Crect width='600' height='600' filter='url(%23m)' opacity='0.25'/%3E%3C/svg%3E"),
     /* major graph lines (every 5 minor squares) */
-    linear-gradient(to bottom, rgba(88, 124, 176, 0.16) 1px, transparent 1px),
-    linear-gradient(to right, rgba(88, 124, 176, 0.16) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(76, 112, 168, 0.18) 1px, transparent 1px),
+    linear-gradient(to right, rgba(76, 112, 168, 0.18) 1px, transparent 1px),
     /* minor graph lines */
-    linear-gradient(to bottom, rgba(112, 146, 192, 0.1) 1px, transparent 1px),
-    linear-gradient(to right, rgba(112, 146, 192, 0.1) 1px, transparent 1px);
+    linear-gradient(to bottom, rgba(100, 136, 188, 0.12) 1px, transparent 1px),
+    linear-gradient(to right, rgba(100, 136, 188, 0.12) 1px, transparent 1px);
   background-size:
-    140px 140px,
+    180px 180px,
+    600px 600px,
     120px 120px,
     120px 120px,
     24px 24px,
@@ -54,10 +76,19 @@ html:not(.dark) .site-canvas {
   background-repeat: repeat;
 }
 
-/* Header sits translucent over the paper; tint it to the paper color so it
-   reads as the same sheet rather than a neutral strip. */
+/* Header and footer sit translucent over the paper; tint them to the paper
+   color so they read as the same sheet rather than neutral strips. */
 html:not(.dark) header {
-  background-color: rgba(247, 242, 231, 0.85);
+  background-color: color-mix(in srgb, var(--paper) 85%, transparent);
+}
+
+html:not(.dark) footer {
+  background-color: color-mix(in srgb, var(--paper) 70%, transparent);
+}
+
+/* Fullscreen loader veil (AppLoader adds .app-loader when fullscreen). */
+html:not(.dark) .app-loader {
+  background-color: color-mix(in srgb, var(--paper) 90%, transparent);
 }
 
 /* ------------------------------------------------------------------- dark */

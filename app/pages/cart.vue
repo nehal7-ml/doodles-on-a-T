@@ -51,21 +51,21 @@ useHead({ title: "Shopping Cart" });
 
 <template>
   <div class="my-5 h-20">
-    <h1 class="text-5xl font-bold text-center">Shopping Cart</h1>
+    <h1 class="text-3xl sm:text-5xl font-bold text-center">Shopping Cart</h1>
   </div>
 
   <AppLoader v-if="!loaded" label="Unpacking the cart…" />
 
   <div
     v-else-if="cart.items.length === 0"
-    class="border-2 border-dashed border-stone-300 dark:border-zinc-700 rounded-lg p-12 text-center space-y-4"
+    class="border-2 border-dashed border-slate-300 dark:border-zinc-700 rounded-lg p-12 text-center space-y-4"
   >
     <UIcon
       name="i-heroicons-shopping-bag"
-      class="w-14 h-14 mx-auto text-stone-400 dark:text-zinc-500"
+      class="w-14 h-14 mx-auto text-slate-400 dark:text-zinc-500"
     />
     <p class="text-xl font-bold">Your cart is empty</p>
-    <p class="text-stone-500 dark:text-zinc-400">
+    <p class="text-slate-500 dark:text-zinc-400">
       Nothing sketched in yet. Go pick something nice.
     </p>
     <UButton to="/explore" color="primary">Explore the sketchbook</UButton>
@@ -89,7 +89,7 @@ useHead({ title: "Shopping Cart" });
         to="/checkout"
         color="primary"
         size="lg"
-        class="w-full justify-center font-bold border-2 border-stone-950 dark:border-zinc-50 rounded-md"
+        class="w-full justify-center font-bold border-2 border-slate-950 dark:border-zinc-50 rounded-md"
         :disabled="cart.hasUnavailable"
       >
         Checkout

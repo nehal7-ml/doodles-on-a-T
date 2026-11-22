@@ -37,7 +37,7 @@ useHead({ title: "Sign in" });
 </script>
 
 <template>
-  <div class="max-w-md mx-auto my-10 p-6 border-2 border-dashed border-stone-400 rounded-lg bg-stone-50/60">
+  <div class="max-w-md mx-auto my-10 p-6 border-2 border-dashed border-slate-400 rounded-lg bg-slate-50/60">
     <h1 class="text-3xl font-bold mb-6">Sign in</h1>
 
     <form class="space-y-4" @submit.prevent="submit">
@@ -48,7 +48,7 @@ useHead({ title: "Sign in" });
           type="email"
           autocomplete="email"
           required
-          class="mt-1 w-full rounded border-2 border-stone-300 bg-white px-3 py-2 text-stone-900 focus:border-stone-950 focus:outline-none"
+          class="mt-1 w-full rounded border-2 border-slate-300 bg-white px-3 py-2 text-slate-900 focus:border-slate-950 focus:outline-none"
         />
       </label>
 
@@ -60,7 +60,7 @@ useHead({ title: "Sign in" });
           autocomplete="current-password"
           required
           minlength="12"
-          class="mt-1 w-full rounded border-2 border-stone-300 bg-white px-3 py-2 text-stone-900 focus:border-stone-950 focus:outline-none"
+          class="mt-1 w-full rounded border-2 border-slate-300 bg-white px-3 py-2 text-slate-900 focus:border-slate-950 focus:outline-none"
         />
       </label>
 
@@ -69,17 +69,17 @@ useHead({ title: "Sign in" });
       <button
         type="submit"
         :disabled="pending"
-        class="w-full rounded bg-stone-950 px-4 py-2 font-semibold text-stone-50 hover:bg-stone-800 disabled:opacity-50"
+        class="w-full rounded bg-slate-950 px-4 py-2 font-semibold text-slate-50 hover:bg-slate-800 disabled:opacity-50"
       >
         {{ pending ? "Signing in…" : "Sign in" }}
       </button>
     </form>
 
     <template v-if="providers.google">
-      <div class="my-6 flex items-center gap-3 text-xs uppercase tracking-wide text-stone-500">
-        <span class="h-px flex-1 bg-stone-300" />
+      <div class="my-6 flex items-center gap-3 text-xs uppercase tracking-wide text-slate-500">
+        <span class="h-px flex-1 bg-slate-300" />
         or
-        <span class="h-px flex-1 bg-stone-300" />
+        <span class="h-px flex-1 bg-slate-300" />
       </div>
 
       <form method="post" action="/api/auth/signin/google">
@@ -87,14 +87,14 @@ useHead({ title: "Sign in" });
         <input type="hidden" name="callbackUrl" :value="safeCallback(route.query.callbackUrl)" />
         <button
           type="submit"
-          class="w-full rounded border-2 border-stone-950 px-4 py-2 font-semibold hover:bg-stone-950 hover:text-stone-50"
+          class="w-full rounded border-2 border-slate-950 px-4 py-2 font-semibold hover:bg-slate-950 hover:text-slate-50"
         >
           Continue with Google
         </button>
       </form>
     </template>
 
-    <p class="mt-6 text-sm text-stone-600">
+    <p class="mt-6 text-sm text-slate-600">
       No account?
       <NuxtLink to="/register" class="underline underline-offset-4">Create one</NuxtLink>
       ·

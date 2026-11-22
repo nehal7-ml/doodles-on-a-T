@@ -11,10 +11,10 @@ const currency = computed(() => props.currency ?? "USD");
 
 <template>
   <div
-    class="w-full md:w-1/3 md:max-w-1/3 flex flex-col gap-2 rounded-md border-2 border-dashed border-stone-300 dark:border-zinc-700 p-5 h-fit"
+    class="w-full md:w-1/3 md:max-w-1/3 flex flex-col gap-2 rounded-md border-2 border-dashed border-slate-300 dark:border-zinc-700 p-5 h-fit"
   >
     <h2 class="text-xl font-bold">Order Summary</h2>
-    <div class="h-1 w-auto border-b dark:border-stone-700" />
+    <div class="h-1 w-auto border-b dark:border-zinc-700" />
 
     <p class="text-highlighted flex justify-between items-center">
       <span class="font-medium">Items ({{ itemCount }})</span>
@@ -24,12 +24,12 @@ const currency = computed(() => props.currency ?? "USD");
     </p>
     <p class="text-highlighted flex justify-between items-center">
       <span class="font-medium">Shipping</span>
-      <span class="text-sm text-stone-500 dark:text-zinc-400">
+      <span class="text-sm text-slate-500 dark:text-zinc-400">
         Calculated at checkout
       </span>
     </p>
 
-    <div class="h-1 w-auto border-b dark:border-stone-700" />
+    <div class="h-1 w-auto border-b dark:border-zinc-700" />
 
     <p class="text-highlighted flex justify-between font-bold">
       <span>Total</span>

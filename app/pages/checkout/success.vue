@@ -24,7 +24,7 @@ useHead({ title: "Order received" });
       <template v-else> We received your order. </template>
     </p>
 
-    <p class="text-stone-500 dark:text-zinc-400">
+    <p class="text-slate-500 dark:text-zinc-400">
       We will email you as soon as the payment is confirmed. You can close this
       page.
     </p>
@@ -39,7 +39,7 @@ useHead({ title: "Order received" });
       </UButton>
     </div>
 
-    <p class="text-xs text-stone-500 dark:text-zinc-400">
+    <p class="text-xs text-slate-500 dark:text-zinc-400">
       If you do not receive a confirmation email, contact support with the order
       number above.
     </p>

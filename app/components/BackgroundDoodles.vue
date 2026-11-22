@@ -13,7 +13,7 @@
       }"
     >
       <div
-        class="doodle-svg-wrapper text-stone-800/15 dark:text-zinc-200/15"
+        class="doodle-svg-wrapper text-slate-700/25 dark:text-zinc-200/15"
         v-html="doodle.svgContent"
       />
     </div>

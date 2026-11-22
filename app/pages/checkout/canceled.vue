@@ -11,7 +11,7 @@ useHead({ title: "Payment canceled" });
   <div class="max-w-xl mx-auto my-12 text-center space-y-5">
     <UIcon
       name="i-heroicons-x-circle"
-      class="w-16 h-16 mx-auto text-yellow-600 dark:text-yellow-400"
+      class="w-16 h-16 mx-auto text-coral-600 dark:text-coral-400"
     />
 
     <h1 class="text-3xl font-bold">Payment canceled</h1>
@@ -23,7 +23,7 @@ useHead({ title: "Payment canceled" });
       <template v-else> Your order is saved as unpaid. </template>
     </p>
 
-    <p class="text-stone-500 dark:text-zinc-400">
+    <p class="text-slate-500 dark:text-zinc-400">
       No money was taken. If you still want these items, add them to your cart
       again and restart checkout.
     </p>

@@ -10,22 +10,24 @@ onMounted(() => {
 
 <template>
   <header
-    class="relative z-10 border-b-2 border-dashed border-stone-400 dark:border-zinc-700 bg-stone-50/80 dark:bg-zinc-900/80 backdrop-blur"
+    class="relative z-10 border-b-2 border-dashed border-slate-400 dark:border-zinc-700 bg-slate-50/80 dark:bg-zinc-900/80 backdrop-blur"
   >
-    <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+    <div
+      class="max-w-6xl mx-auto px-4 py-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-3"
+    >
       <!-- Logo resembling a quick sketch logo -->
       <NuxtLink
         to="/"
-        class="text-2xl font-bold tracking-tight hover:scale-105 transition-transform duration-150 inline-block"
+        class="text-xl sm:text-2xl font-bold tracking-tight hover:scale-105 transition-transform duration-150 inline-block"
       >
         <span
-          class="border-2 border-stone-950 dark:border-zinc-50 px-2 py-0.5 rounded-sm rotate-[-2deg] inline-block bg-yellow-100 dark:bg-transparent text-stone-950 dark:text-zinc-50"
+          class="border-2 border-slate-950 dark:border-zinc-50 px-2 py-0.5 rounded-sm rotate-[-2deg] inline-block bg-coral-100 dark:bg-transparent text-slate-950 dark:text-zinc-50"
         >
           doodles.on.a.T
         </span>
       </NuxtLink>
 
-      <nav class="flex items-center gap-6">
+      <nav class="flex flex-wrap items-center gap-x-4 gap-y-2 sm:gap-x-6">
         <NuxtLink
           to="/explore"
           class="hover:underline underline-offset-4 decoration-wavy"

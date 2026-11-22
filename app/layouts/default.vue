@@ -11,7 +11,7 @@ const myDoodlePool = [cat1svg];
 
 <template>
   <div
-    class="site-canvas min-h-screen text-stone-900 dark:text-zinc-50 font-sans selection:bg-yellow-200 dark:selection:bg-yellow-900/50"
+    class="site-canvas min-h-screen text-slate-900 dark:text-zinc-50 font-sans selection:bg-coral-200 dark:selection:bg-coral-900/50"
   >
     <!-- Backgrounds (paper in light, chalkboard in dark) are painted on this
          canvas via assets/css/main.css. -->

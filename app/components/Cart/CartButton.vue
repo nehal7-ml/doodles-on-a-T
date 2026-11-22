@@ -34,7 +34,7 @@ const columns: TableColumn<CartItem>[] = [
 
     <template #content>
       <div
-        class="flex flex-col justify-center items-center gap-2 min-w-48 min-h-48 p-2 bg-stone-950 rounded-md"
+        class="flex flex-col justify-center items-center gap-2 min-w-48 min-h-48 p-2 bg-slate-950 rounded-md"
       >
         <div v-if="!items" class="self-center">
           <p class="text-center text-xl">Your cart is empty</p>

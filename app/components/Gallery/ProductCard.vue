@@ -33,10 +33,10 @@ const inStock = computed(
 <template>
   <NuxtLink
     :to="`/products/${product.slug || product.id}`"
-    class="group flex flex-col border-2 border-stone-900 dark:border-zinc-200 rounded-lg p-3 bg-white dark:bg-zinc-950 transition-all hover:-translate-y-1 hover:shadow-[4px_4px_0px_0px_rgba(28,25,23,1)] dark:hover:shadow-[4px_4px_0px_0px_rgba(250,250,250,1)]"
+    class="group flex flex-col border-2 border-slate-900 dark:border-zinc-200 rounded-lg p-3 bg-white dark:bg-zinc-950 transition-all hover:-translate-y-1 hover:shadow-[4px_4px_0px_0px_rgba(15,23,42,1)] dark:hover:shadow-[4px_4px_0px_0px_rgba(250,250,250,1)]"
   >
     <div
-      class="relative aspect-square overflow-hidden rounded border border-stone-200 dark:border-zinc-800 bg-stone-50 dark:bg-zinc-900"
+      class="relative aspect-square overflow-hidden rounded border border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-900"
     >
       <img
         v-if="image && !imageFailed"
@@ -48,13 +48,13 @@ const inStock = computed(
       />
       <div
         v-else
-        class="flex h-full w-full items-center justify-center p-8 text-stone-300 dark:text-zinc-700"
+        class="flex h-full w-full items-center justify-center p-8 text-slate-300 dark:text-zinc-700"
       >
         <UIcon name="i-heroicons-photo" class="h-16 w-16" />
       </div>
 
       <span
-        class="absolute bottom-2 left-2 text-xs font-mono bg-white/90 dark:bg-zinc-950/90 border border-stone-300 dark:border-zinc-700 px-1.5 py-0.5 rounded rotate-[-1deg]"
+        class="absolute bottom-2 left-2 text-xs font-mono bg-white/90 dark:bg-zinc-950/90 border border-slate-300 dark:border-zinc-700 px-1.5 py-0.5 rounded rotate-[-1deg]"
       >
         {{ formatPrice(product.price, product.currency) }}
       </span>
@@ -67,7 +67,7 @@ const inStock = computed(
       </span>
       <span
         v-else-if="product.images.length > 1"
-        class="absolute top-2 right-2 text-[10px] font-mono bg-stone-900/80 text-white dark:bg-zinc-100/90 dark:text-zinc-900 px-1.5 py-0.5 rounded"
+        class="absolute top-2 right-2 text-[10px] font-mono bg-slate-900/80 text-white dark:bg-zinc-100/90 dark:text-zinc-900 px-1.5 py-0.5 rounded"
       >
         {{ product.images.length }} views
       </span>
@@ -79,7 +79,7 @@ const inStock = computed(
       >
         {{ product.name }}
       </h2>
-      <p class="mt-1 text-xs text-stone-500 dark:text-zinc-400 line-clamp-2">
+      <p class="mt-1 text-xs text-slate-500 dark:text-zinc-400 line-clamp-2">
         {{ product.description || "A fresh doodle, printed on demand." }}
       </p>
 
@@ -91,17 +91,17 @@ const inStock = computed(
               :key="variant.id"
               :title="variant.name"
               :style="{ backgroundColor: variant.colors[0] || '#d6d3d1' }"
-              class="h-4 w-4 rounded-full border border-stone-400 dark:border-zinc-500"
+              class="h-4 w-4 rounded-full border border-slate-400 dark:border-zinc-500"
             />
           </div>
           <span
-            class="text-[11px] font-bold uppercase tracking-wide text-stone-500 dark:text-zinc-400"
+            class="text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-zinc-400"
           >
             {{ colorLabel }}
           </span>
         </div>
         <p
-          class="font-mono text-[11px] text-stone-500 dark:text-zinc-400 line-clamp-1"
+          class="font-mono text-[11px] text-slate-500 dark:text-zinc-400 line-clamp-1"
         >
           Sizes: {{ sizeLabel }}
         </p>

@@ -408,17 +408,17 @@ useHead(() => {
 
   <div
     v-else-if="notFound || error || !product"
-    class="border-2 border-stone-900 dark:border-zinc-100 rounded-lg bg-white dark:bg-zinc-950 p-12 text-center space-y-4"
+    class="border-2 border-slate-900 dark:border-zinc-100 rounded-lg bg-white dark:bg-zinc-950 p-12 text-center space-y-4"
   >
     <UIcon
       name="i-heroicons-pencil-square"
-      class="w-14 h-14 mx-auto text-stone-400 dark:text-zinc-500"
+      class="w-14 h-14 mx-auto text-slate-400 dark:text-zinc-500"
     />
     <div class="space-y-1">
       <h1 class="text-2xl font-black">
         {{ notFound ? "This doodle got erased" : "Something smudged" }}
       </h1>
-      <p class="text-stone-500 dark:text-zinc-400">
+      <p class="text-slate-500 dark:text-zinc-400">
         {{
           notFound
             ? "We couldn't find that product. It may have been removed."
@@ -452,7 +452,7 @@ useHead(() => {
           dots
           :items="galleryImages"
           :ui="{ item: 'basis-full' }"
-          class="rounded-lg overflow-hidden border-2 border-stone-900 dark:border-zinc-200 bg-white dark:bg-zinc-950"
+          class="rounded-lg overflow-hidden border-2 border-slate-900 dark:border-zinc-200 bg-white dark:bg-zinc-950"
         >
           <img
             :src="item"
@@ -462,14 +462,14 @@ useHead(() => {
         </UCarousel>
 
         <div
-          class="mt-3 flex items-center justify-between font-mono text-xs text-stone-500 dark:text-zinc-400"
+          class="mt-3 flex items-center justify-between font-mono text-xs text-slate-500 dark:text-zinc-400"
         >
-          <span>
+          <span class="min-w-0 truncate">
             fig_{{ product.id }}_{{ product.name.toLowerCase().replaceAll(" ", "_") }}{{
               selectedVariant ? `_${selectedVariant.id}` : ""
             }}.png
           </span>
-          <span>{{ galleryImages.length }} views</span>
+          <span class="shrink-0 pl-3">{{ galleryImages.length }} views</span>
         </div>
       </div>
 
@@ -488,7 +488,7 @@ useHead(() => {
           </p>
         </div>
 
-        <p class="text-stone-600 dark:text-zinc-400 font-medium leading-relaxed">
+        <p class="text-slate-600 dark:text-zinc-400 font-medium leading-relaxed">
           {{ product.description }}
         </p>
 
@@ -497,7 +497,7 @@ useHead(() => {
             Color
             <span
               v-if="selectedVariant"
-              class="font-mono normal-case tracking-normal text-stone-500 dark:text-zinc-400"
+              class="font-mono normal-case tracking-normal text-slate-500 dark:text-zinc-400"
             >
               — {{ selectedVariant.name }}
             </span>
@@ -510,15 +510,15 @@ useHead(() => {
               class="flex items-center gap-2 rounded-md border-2 px-3 py-2 text-sm font-medium transition-colors"
               :class="
                 variant.id === selectedVariantId
-                  ? 'border-stone-900 dark:border-zinc-100 bg-stone-100 dark:bg-zinc-800'
-                  : 'border-stone-300 dark:border-zinc-700 hover:border-stone-500 dark:hover:border-zinc-500'
+                  ? 'border-slate-900 dark:border-zinc-100 bg-slate-100 dark:bg-zinc-800'
+                  : 'border-slate-300 dark:border-zinc-700 hover:border-slate-500 dark:hover:border-zinc-500'
               "
               :title="variant.inStock ? variant.name : `${variant.name} (out of stock)`"
               @click="selectedVariantId = variant.id"
             >
               <span
                 :style="{ backgroundColor: variant.colors[0] || '#d6d3d1' }"
-                class="h-4 w-4 rounded-full border border-stone-400 dark:border-zinc-500"
+                class="h-4 w-4 rounded-full border border-slate-400 dark:border-zinc-500"
               />
               <span :class="variant.inStock ? '' : 'line-through opacity-60'">
                 {{ variant.name }}
@@ -545,10 +545,10 @@ useHead(() => {
               class="min-w-11 inline-flex items-center justify-center gap-1.5 rounded-md border-2 px-3 py-2 text-sm font-bold transition-colors disabled:cursor-not-allowed"
               :class="
                 size === selectedSize
-                  ? 'border-stone-900 dark:border-zinc-100 bg-stone-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
+                  ? 'border-slate-900 dark:border-zinc-100 bg-slate-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
                   : isSizeAvailable(size)
-                    ? 'border-stone-300 dark:border-zinc-700 hover:border-stone-500 dark:hover:border-zinc-500'
-                    : 'border-stone-200 dark:border-zinc-800 text-stone-400 dark:text-zinc-600 line-through'
+                    ? 'border-slate-300 dark:border-zinc-700 hover:border-slate-500 dark:hover:border-zinc-500'
+                    : 'border-slate-200 dark:border-zinc-800 text-slate-400 dark:text-zinc-600 line-through'
               "
               :title="
                 isSizeAvailable(size)
@@ -571,7 +571,7 @@ useHead(() => {
 
         <div class="flex flex-wrap items-center gap-3">
           <div
-            class="flex items-center rounded-md border-2 border-stone-900 dark:border-zinc-100"
+            class="flex items-center rounded-md border-2 border-slate-900 dark:border-zinc-100"
           >
             <UButton
               icon="i-heroicons-minus"
@@ -593,7 +593,7 @@ useHead(() => {
             color="primary"
             size="xl"
             icon="i-heroicons-shopping-bag"
-            class="flex-1 font-bold border-2 border-stone-950 dark:border-zinc-50 rounded-md"
+            class="flex-1 font-bold border-2 border-slate-950 dark:border-zinc-50 rounded-md"
             :disabled="
               adding ||
               (product.options.length > 0 && !selectedOption?.inStock)
@@ -618,7 +618,7 @@ useHead(() => {
           <span>
             {{ inCartForSelectedOption }} × this variant already in your cart.
           </span>
-          <span class="text-stone-500 dark:text-zinc-400">
+          <span class="text-slate-500 dark:text-zinc-400">
             Pick another colour or size to add it as a separate line.
           </span>
           <NuxtLink
@@ -629,7 +629,7 @@ useHead(() => {
           </NuxtLink>
         </p>
 
-        <div class="space-y-2 border-t-2 border-dashed border-stone-300 dark:border-zinc-700 pt-4 text-sm text-stone-500 dark:text-zinc-400">
+        <div class="space-y-2 border-t-2 border-dashed border-slate-300 dark:border-zinc-700 pt-4 text-sm text-slate-500 dark:text-zinc-400">
           <p class="flex items-center gap-2">
             <UIcon name="i-heroicons-truck" class="w-4 h-4" />
             Printed on demand · ships in 3–5 days

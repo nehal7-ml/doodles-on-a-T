@@ -8,8 +8,8 @@ const pending = ref(false);
 const errorMessage = ref("");
 
 const statusColors: Record<string, string> = {
-  pending: "bg-yellow-100 text-yellow-800 border-yellow-700 dark:bg-yellow-950 dark:text-yellow-200 dark:border-yellow-300",
-  draft: "bg-stone-100 text-stone-700 border-stone-500 dark:bg-zinc-800 dark:text-zinc-200 dark:border-zinc-500",
+  pending: "bg-coral-100 text-coral-800 border-coral-700 dark:bg-coral-950 dark:text-coral-200 dark:border-coral-300",
+  draft: "bg-slate-100 text-slate-700 border-slate-500 dark:bg-zinc-800 dark:text-zinc-200 dark:border-zinc-500",
   inprocess: "bg-sky-100 text-sky-800 border-sky-700 dark:bg-sky-950 dark:text-sky-200 dark:border-sky-300",
   partial: "bg-sky-100 text-sky-800 border-sky-700 dark:bg-sky-950 dark:text-sky-200 dark:border-sky-300",
   shipped: "bg-emerald-100 text-emerald-800 border-emerald-700 dark:bg-emerald-950 dark:text-emerald-200 dark:border-emerald-300",
@@ -77,14 +77,14 @@ useHead({ title: "Track your order · doodles.on.a.T" });
       <h1 class="text-4xl md:text-5xl font-black tracking-tight">
         Track your order
       </h1>
-      <p class="text-stone-600 dark:text-zinc-400 font-medium">
+      <p class="text-slate-600 dark:text-zinc-400 font-medium">
         Enter the order number from your confirmation email and the email
         address you used at checkout.
       </p>
     </header>
 
     <form
-      class="border-2 border-stone-900 dark:border-zinc-100 rounded-lg bg-white dark:bg-zinc-950 p-6 space-y-4"
+      class="border-2 border-slate-900 dark:border-zinc-100 rounded-lg bg-white dark:bg-zinc-950 p-6 space-y-4"
       @submit.prevent="trackOrder"
     >
       <div class="grid sm:grid-cols-2 gap-4">
@@ -115,7 +115,7 @@ useHead({ title: "Track your order · doodles.on.a.T" });
         size="lg"
         icon="i-heroicons-magnifying-glass"
         :loading="pending"
-        class="font-bold border-2 border-stone-950 dark:border-zinc-50 rounded-md"
+        class="font-bold border-2 border-slate-950 dark:border-zinc-50 rounded-md"
       >
         Find my order
       </UButton>
@@ -130,17 +130,17 @@ useHead({ title: "Track your order · doodles.on.a.T" });
 
     <section
       v-if="order"
-      class="border-2 border-stone-900 dark:border-zinc-100 rounded-lg bg-white dark:bg-zinc-950 p-6 space-y-6"
+      class="border-2 border-slate-900 dark:border-zinc-100 rounded-lg bg-white dark:bg-zinc-950 p-6 space-y-6"
     >
       <div class="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p class="font-mono text-xs text-stone-500 dark:text-zinc-400">
+          <p class="font-mono text-xs text-slate-500 dark:text-zinc-400">
             {{ order.orderNumber }}
           </p>
           <h2 class="text-2xl font-black">
             {{ order.statusLabel }}
           </h2>
-          <p class="text-sm text-stone-500 dark:text-zinc-400">
+          <p class="text-sm text-slate-500 dark:text-zinc-400">
             Placed {{ formatDate(order.createdAt) }}
           </p>
         </div>
@@ -196,7 +196,7 @@ useHead({ title: "Track your order · doodles.on.a.T" });
 
       <div class="space-y-3">
         <h3 class="text-sm font-bold uppercase tracking-wide">Items</h3>
-        <ul class="divide-y-2 divide-dashed divide-stone-200 dark:divide-zinc-800">
+        <ul class="divide-y-2 divide-dashed divide-slate-200 dark:divide-zinc-800">
           <li
             v-for="item in order.items"
             :key="item.id"
@@ -204,7 +204,7 @@ useHead({ title: "Track your order · doodles.on.a.T" });
           >
             <div>
               <p class="font-bold">{{ item.name }}</p>
-              <p class="text-sm text-stone-500 dark:text-zinc-400">
+              <p class="text-sm text-slate-500 dark:text-zinc-400">
                 <span v-if="item.color">{{ item.color }}</span>
                 <span v-if="item.color && item.size"> · </span>
                 <span v-if="item.size">Size {{ item.size }}</span>
@@ -219,7 +219,7 @@ useHead({ title: "Track your order · doodles.on.a.T" });
         </ul>
       </div>
 
-      <div class="border-t-2 border-stone-200 dark:border-zinc-800 pt-4 space-y-1 text-sm">
+      <div class="border-t-2 border-slate-200 dark:border-zinc-800 pt-4 space-y-1 text-sm">
         <p class="flex justify-between">
           <span>Subtotal</span>
           <span class="font-mono">{{ formatMoney(order.totals.subtotal, order.totals.currency) }}</span>
@@ -250,10 +250,10 @@ useHead({ title: "Track your order · doodles.on.a.T" });
             :key="event.id"
             class="flex gap-3 text-sm"
           >
-            <span class="mt-1 h-2 w-2 shrink-0 rounded-full bg-stone-900 dark:bg-zinc-100" />
+            <span class="mt-1 h-2 w-2 shrink-0 rounded-full bg-slate-900 dark:bg-zinc-100" />
             <div>
               <p class="font-bold">{{ event.message }}</p>
-              <p class="text-stone-500 dark:text-zinc-400">
+              <p class="text-slate-500 dark:text-zinc-400">
                 {{ formatDate(event.createdAt) }}
               </p>
             </div>
