@@ -11,10 +11,12 @@ const myDoodlePool = [cat1svg];
 
 <template>
   <div
-    class="min-h-screen bg-stone-50 dark:bg-zinc-900 text-stone-900 dark:text-zinc-50 font-sans selection:bg-yellow-200 dark:selection:bg-yellow-900/50"
+    class="site-canvas min-h-screen dark:bg-zinc-900 text-stone-900 dark:text-zinc-50 font-sans selection:bg-yellow-200 dark:selection:bg-yellow-900/50"
   >
+    <!-- Dark-mode grid overlay; hidden by CSS in light mode, where the paper
+         background (grain + graph grid) lives in assets/css/main.css. -->
     <div
-      class="absolute inset-0 opacity-20 dark:opacity-10 pointer-events-none bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-size-[24px_24px]"
+      class="page-grid-overlay absolute inset-0 opacity-20 dark:opacity-10 pointer-events-none bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-size-[24px_24px]"
     />
     <Header />
 
