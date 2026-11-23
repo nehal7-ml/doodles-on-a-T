@@ -6,6 +6,9 @@ export default defineNuxtConfig({
 
   modules: ["@nuxt/ui", "@nuxt/eslint", "@vercel/analytics"],
   app: {
+    // Route changes animate the page area only (header/footer stay put):
+    // the old page lifts away, the new one settles in — see main.css.
+    pageTransition: { name: "page", mode: "out-in" },
     head: {
       htmlAttrs: {
         lang: "en",

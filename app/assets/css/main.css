@@ -205,3 +205,33 @@ a[data-slot="base"] {
       1px 1px 0 var(--sticker-drop);
   }
 }
+
+/* =========================================================================
+   Page transitions (nuxt.config.ts: name "page", mode "out-in").
+   The header, footer and canvas never move — only the page area changes:
+   the old page lifts away like a taken sheet, the new one settles down
+   onto the sketchbook. Skipped entirely for reduced-motion users.
+   ========================================================================= */
+@media (prefers-reduced-motion: no-preference) {
+  .page-enter-active {
+    transition:
+      opacity 0.2s ease-out,
+      transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .page-leave-active {
+    transition:
+      opacity 0.12s ease-in,
+      transform 0.12s ease-in;
+  }
+
+  .page-enter-from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  .page-leave-to {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
