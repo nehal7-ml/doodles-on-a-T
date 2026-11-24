@@ -1,6 +1,7 @@
 <template>
   <div
     class="fixed inset-0 pointer-events-none z-0 overflow-hidden select-none"
+    :class="{ 'is-scrolling': scrolling }"
   >
     <div
       v-for="doodle in activeDoodles"
@@ -47,6 +48,26 @@ const activeDoodles = ref<ActiveDoodle[]>([]);
 let spawnTimer: ReturnType<typeof setTimeout> | null = null;
 let doodleIdCounter = 0;
 
+/* The path-drawing animation repaints its SVG every frame it runs. Scrollbar
+   drags and touch drags are handled on the main thread, so that paint competes
+   directly with the scroll and shows up as stutter. Freeze the drawings while
+   the page is moving and let them resume once it settles. */
+const scrolling = ref(false);
+let scrollRaf = 0;
+let scrollIdleTimer: ReturnType<typeof setTimeout> | null = null;
+
+const handleScroll = () => {
+  if (scrollRaf) return;
+  scrollRaf = requestAnimationFrame(() => {
+    scrollRaf = 0;
+    scrolling.value = true;
+    if (scrollIdleTimer) clearTimeout(scrollIdleTimer);
+    scrollIdleTimer = setTimeout(() => {
+      scrolling.value = false;
+    }, 200);
+  });
+};
+
 const spawnDoodle = () => {
   if (!props.svgPool || props.svgPool.length === 0) return;
 
@@ -85,10 +106,14 @@ const spawnDoodle = () => {
 
 onMounted(() => {
   spawnDoodle();
+  window.addEventListener("scroll", handleScroll, { passive: true });
 });
 
 onUnmounted(() => {
   if (spawnTimer) clearTimeout(spawnTimer);
+  if (scrollIdleTimer) clearTimeout(scrollIdleTimer);
+  if (scrollRaf) cancelAnimationFrame(scrollRaf);
+  window.removeEventListener("scroll", handleScroll);
 });
 </script>
 <style scoped>
@@ -145,6 +170,29 @@ onUnmounted(() => {
   100% {
     stroke-dashoffset: 0;
     opacity: 0; /* Smoothly fade away before unmounting */
+  }
+}
+
+/* 3. Scroll gate — stop drawing while the page moves, resume when it stops.
+   This is the scroll-jank fix: a running stroke-dashoffset animation
+   invalidates paint every frame, and drag/touch scrolling shares the main
+   thread with that paint. */
+.is-scrolling .doodle-svg-wrapper :deep(path),
+.is-scrolling .doodle-svg-wrapper :deep(polyline),
+.is-scrolling .doodle-svg-wrapper :deep(line),
+.is-scrolling .doodle-svg-wrapper :deep(polygon) {
+  animation-play-state: paused;
+}
+
+/* Users who ask for reduced motion get the doodles drawn once, statically. */
+@media (prefers-reduced-motion: reduce) {
+  .doodle-svg-wrapper :deep(path),
+  .doodle-svg-wrapper :deep(polyline),
+  .doodle-svg-wrapper :deep(line),
+  .doodle-svg-wrapper :deep(polygon) {
+    animation: none;
+    stroke-dashoffset: 0;
+    opacity: 1;
   }
 }
 </style>

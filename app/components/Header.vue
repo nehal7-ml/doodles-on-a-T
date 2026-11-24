@@ -10,7 +10,7 @@ onMounted(() => {
 
 <template>
   <header
-    class="relative z-10 border-b-2 border-dashed border-slate-400 dark:border-zinc-700 bg-slate-50/80 dark:bg-zinc-900/80 backdrop-blur"
+    class="relative z-10 border-b-2 border-dashed border-slate-400 dark:border-zinc-700 bg-slate-50 dark:bg-zinc-900"
   >
     <div
       class="max-w-6xl mx-auto px-4 py-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-3"

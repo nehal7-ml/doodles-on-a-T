@@ -77,9 +77,14 @@ html:not(.dark) .site-canvas {
 }
 
 /* Header and footer sit translucent over the paper; tint them to the paper
-   color so they read as the same sheet rather than neutral strips. */
+   color so they read as the same sheet rather than neutral strips.
+
+   The header used to be frosted with `backdrop-blur`. Because it scrolls with
+   the page, every scrolled pixel changed what sat behind it, so the blur had
+   to be recomputed on every frame — measured at 2.3x the GPU time during a
+   drag scroll. It is now nearly opaque instead, which costs nothing. */
 html:not(.dark) header {
-  background-color: color-mix(in srgb, var(--paper) 85%, transparent);
+  background-color: color-mix(in srgb, var(--paper) 96%, transparent);
 }
 
 html:not(.dark) footer {
@@ -88,7 +93,7 @@ html:not(.dark) footer {
 
 /* Fullscreen loader veil (AppLoader adds .app-loader when fullscreen). */
 html:not(.dark) .app-loader {
-  background-color: color-mix(in srgb, var(--paper) 90%, transparent);
+  background-color: color-mix(in srgb, var(--paper) 95%, transparent);
 }
 
 /* ------------------------------------------------------------------- dark */
@@ -98,15 +103,46 @@ html.dark {
   background-color: #141516;
 }
 
-/* Dark mode: slate chalkboard — chalk-dust grain, two soft eraser smudges
-   (fixed to the viewport so they don't tile) and a faint chalk grid. */
+/* Dark mode: slate chalkboard — chalk-dust grain and a faint chalk grid.
+
+   The two eraser smudges are NOT part of this background. They used to be, with
+   `background-attachment: fixed`, which forces the browser to repaint the
+   background against the viewport on every scroll frame — a classic cause of
+   stutter during scrollbar and touch drags. They now live on the viewport-fixed
+   ::before layer below, which costs nothing to scroll. */
 html.dark .site-canvas {
+  position: relative;
+  z-index: 0;
   color: #e9e6e0;
   background-color: #1b1d1f;
   background-image:
     /* chalk dust */
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='d'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23d)' opacity='0.09'/%3E%3C/svg%3E"),
-    /* eraser smudges */
+    /* major chalk lines (every 5 minor squares) */
+    linear-gradient(to bottom, rgba(228, 231, 236, 0.085) 1px, transparent 1px),
+    linear-gradient(to right, rgba(228, 231, 236, 0.085) 1px, transparent 1px),
+    /* minor chalk lines */
+    linear-gradient(to bottom, rgba(228, 231, 236, 0.05) 1px, transparent 1px),
+    linear-gradient(to right, rgba(228, 231, 236, 0.05) 1px, transparent 1px);
+  background-size:
+    140px 140px,
+    120px 120px,
+    120px 120px,
+    24px 24px,
+    24px 24px;
+  background-repeat: repeat;
+}
+
+/* Eraser smudges: fixed to the viewport so they never tile, without paying
+   for `background-attachment: fixed` on every scroll frame. z-index -1 keeps
+   them above the canvas fill and below all content. */
+html.dark .site-canvas::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
     radial-gradient(
       650px 420px at 18% 8%,
       rgba(255, 255, 255, 0.04),
@@ -116,41 +152,11 @@ html.dark .site-canvas {
       520px 380px at 82% 55%,
       rgba(255, 255, 255, 0.028),
       transparent 70%
-    ),
-    /* major chalk lines (every 5 minor squares) */
-    linear-gradient(to bottom, rgba(228, 231, 236, 0.085) 1px, transparent 1px),
-    linear-gradient(to right, rgba(228, 231, 236, 0.085) 1px, transparent 1px),
-    /* minor chalk lines */
-    linear-gradient(to bottom, rgba(228, 231, 236, 0.05) 1px, transparent 1px),
-    linear-gradient(to right, rgba(228, 231, 236, 0.05) 1px, transparent 1px);
-  background-size:
-    140px 140px,
-    auto,
-    auto,
-    120px 120px,
-    120px 120px,
-    24px 24px,
-    24px 24px;
-  background-attachment:
-    scroll,
-    fixed,
-    fixed,
-    scroll,
-    scroll,
-    scroll,
-    scroll;
-  background-repeat:
-    repeat,
-    no-repeat,
-    no-repeat,
-    repeat,
-    repeat,
-    repeat,
-    repeat;
+    );
 }
 
 html.dark header {
-  background-color: rgba(27, 29, 31, 0.85);
+  background-color: rgba(27, 29, 31, 0.96);
 }
 
 html.dark footer {

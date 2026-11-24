@@ -30,7 +30,7 @@ const ringSizes = {
     class="flex flex-col items-center justify-center gap-4"
     :class="
       fullscreen
-        ? 'app-loader fixed inset-0 z-50 bg-slate-50/90 dark:bg-zinc-900/90 backdrop-blur-sm'
+        ? 'app-loader fixed inset-0 z-50 bg-slate-50/95 dark:bg-zinc-900/95'
         : 'py-16'
     "
     role="status"
