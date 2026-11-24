@@ -122,6 +122,35 @@ export type OrderEvent = {
   createdAt: string;
 };
 
+/** One charge/refund record from the payment ledger, tied to an order. */
+export type TransactionRefund = {
+  id: string;
+  amountCents: number;
+  currency: string;
+  status: string;
+  reason: string | null;
+  createdAt: string;
+};
+
+export type Transaction = {
+  id: string;
+  orderId: string;
+  orderNumber: string | null;
+  orderStatus: string | null;
+  provider: string;
+  status: string;
+  amountCents: number;
+  amountRefundedCents: number;
+  currency: string;
+  method: string | null;
+  brand: string | null;
+  last4: string | null;
+  receiptUrl: string | null;
+  failureMessage: string | null;
+  createdAt: string;
+  refunds: TransactionRefund[];
+};
+
 export type Order = {
   id: string;
   orderNumber: string;
