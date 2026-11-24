@@ -158,6 +158,46 @@ html.dark footer {
 }
 
 /* =========================================================================
+   Sketchbook — account page: front cover (left) + ruled pages (right).
+   ========================================================================= */
+
+/* Closed front cover — kraft cardstock, darker copy in dark mode. */
+.sketch-cover {
+  background-color: #ece4cf;
+}
+
+html.dark .sketch-cover {
+  background-color: #221c14;
+}
+
+/* Ruled notebook paper behind the tabbed pages. */
+.sketch-lines {
+  background-color: #fdfcf8;
+  background-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 24px,
+    rgba(76, 112, 168, 0.16) 24px,
+    rgba(76, 112, 168, 0.16) 25px
+  );
+  background-size: 100% 25px;
+  background-repeat: repeat-x;
+}
+
+html.dark .sketch-lines {
+  background-color: #1b1d1f;
+  background-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 24px,
+    rgba(228, 231, 236, 0.1) 24px,
+    rgba(228, 231, 236, 0.1) 25px
+  );
+  background-size: 100% 25px;
+  background-repeat: repeat-x;
+}
+
+/* =========================================================================
    Sticker buttons — die-cut look in both modes: a cut edge, a thin outline
    and a hard offset shadow. Tailwind utilities live in @layer utilities, so
    these unlayered rules win over component classes without !important.

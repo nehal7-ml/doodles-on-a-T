@@ -11,15 +11,19 @@ const myDoodlePool = [cat1svg];
 
 <template>
   <div
-    class="site-canvas min-h-screen text-slate-900 dark:text-zinc-50 font-sans selection:bg-coral-200 dark:selection:bg-coral-900/50"
+    class="site-canvas flex min-h-screen flex-col text-slate-900 dark:text-zinc-50 font-sans selection:bg-coral-200 dark:selection:bg-coral-900/50"
   >
     <!-- Backgrounds (paper in light, chalkboard in dark) are painted on this
-         canvas via assets/css/main.css. -->
+         canvas via assets/css/main.css.
+
+         The canvas is a flex column and <main> grows, so the footer is always
+         the last thing on screen: spare height becomes empty space above the
+         footer, never below it. -->
     <Header />
 
     <BackgroundDoodles />
 
-    <main class="relative z-10 max-w-6xl mx-auto px-4 py-8">
+    <main class="relative z-10 mx-auto w-full max-w-6xl flex-1 px-4 py-8">
       <slot />
     </main>
     <Footer />
